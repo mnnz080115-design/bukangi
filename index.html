@@ -45,6 +45,7 @@ body{background:var(--sky);color:var(--ink);font-family:var(--font-b);overflow:h
   padding-top:calc(env(safe-area-inset-top,0px) + 12px);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
 .row{display:flex;align-items:center;gap:10px;min-width:0}
+#pauseBtn{pointer-events:auto;flex:none;font-size:18px;line-height:1;width:40px;height:36px;padding:0;border-radius:8px;background:var(--card);color:var(--ink);box-shadow:0 2px 0 rgba(0,0,0,.15)}
 .lv{font-family:var(--font-d);font-size:20px;background:var(--card);padding:4px 12px;border-radius:8px;box-shadow:0 2px 0 rgba(0,0,0,.15)}
 .bar{flex:1;min-width:0;height:10px;background:rgba(255,255,255,.6);border-radius:5px;overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:var(--foe)}
@@ -141,7 +142,7 @@ details.howto[open]{display:grid;gap:10px}
 <div id="stage"></div>
 <div id="labels"></div>
 <div class="hud">
-  <div class="row"><span class="lv" id="lv">LV 1</span><div class="bar"><i id="prog"></i></div></div>
+  <div class="row"><span class="lv" id="lv">LV 1</span><div class="bar"><i id="prog"></i></div><button id="pauseBtn" aria-label="일시정지">❚❚</button></div>
   <div class="wp" id="wp"></div>
 </div>
 
@@ -187,6 +188,18 @@ details.howto[open]{display:grid;gap:10px}
 
 <button id="skillBtn" hidden aria-label="스킬 사용"><span class="in" id="skIcon">🌊</span><span class="nm" id="skName">물살</span></button>
 
+<div class="overlay" id="pause" hidden>
+  <div class="card">
+    <h1>일시정지</h1>
+    <p id="pauseInfo"></p>
+    <div class="btns">
+      <button id="resumeBtn">계속하기</button>
+      <button class="ghost" id="pRetryBtn">다시 하기</button>
+      <button class="ghost" id="pHubBtn">기지로</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="result" hidden>
   <div class="card">
     <h1 id="resTitle">승리</h1>
@@ -219,7 +232,7 @@ const FOE_HP = 1;
 // 레벨이 오를수록 적도 강해짐 (우리 팀 레벨 보너스보다 조금 더 빠르게)
 const lvFoeHp = () => 1 + 0.32 * (level - 1);
 const lvBossHp = () => 1 + 0.2 * (level - 1);                    // 보스(늑구·푸바오) 추가 체력 배율
-const wolfCount = () => Math.min(4, 1 + Math.floor(level / 2));   // 레벨별 늑구 마리 수: 1,2,2,3,3,4
+const wolfCount = () => Math.min(3, 1 + Math.floor(level / 2));   // 레벨별 늑구 마리 수: 1,2,2,3 (이후 3마리 고정, 체력만 증가)
 const lvFoeSpd = () => Math.min(1.4, 1 + 0.05 * (level - 1));
 const lvFoeAtk = () => 1 + 0.15 * (level - 1);   // 적 전체 체력 배율
 const ADD_COST = 3, PCT_COST = 5;
@@ -812,7 +825,7 @@ function killSoldiers(n) {
 
 function hurt(tg, dmg) {
   if (tg.dead) return;
-  if (tg.final !== undefined) addCharge(Math.min(dmg, tg.hp) / tg.max * 15);
+  if (!skillHit) addCharge(Math.min(dmg, Math.max(0, tg.hp)) / skillBase());   // 준 피해만큼 스킬 충전 (스킬 피해는 제외)
   if (tg.final) {
     // 접전 보정: 보스 체력 비율이 내 병력 비율을 따라가게 해서, 병력이 거의 바닥날 때쯤 보스가 쓰러짐
     const e = clamp(6 / tg.armyStart + 0.02, 0.03, 0.4);          // 끝날 때 남길 병력 비율 (약 5~6명)
@@ -832,7 +845,6 @@ function hurt(tg, dmg) {
   tg.hp -= dmg; tg.flash = 1;
   if (tg.hp > 0) return;
   tg.dead = 0.001;
-  if (tg.final === undefined) addCharge(tg.big ? 5 : 1);
   if (tg.final !== undefined) {           // 보스
     if (tg.final && state === 'run') finish(true);
     return;
@@ -913,13 +925,15 @@ function passGate(g) {
 // 늑구 하울링: 근처 졸개들이 작은 늑구로 변해서 달려듦
 // 늑구 하울링: 늑구 체력의 절반짜리 중간늑구를 1마리(체력 절반 이하면 2마리) 소환
 function wolfHowl(b) {
+  const alive = mids.filter(m => m.owner === b && !m.dead).length;
+  const cnt = Math.min(2 - alive, b.hp < b.max * 0.5 ? 2 : 1), hp = Math.max(10, Math.round(b.max * 0.5));
+  if (cnt <= 0) return;   // 이미 2마리가 살아 있으면 소환 안 함
   b.howl = 1.1;
   banner('늑구 하울링! 중간늑구 등장');
   boom(b.x, b.z, 8, 0xb8c4d0, 0.5, 0.6); shake = Math.max(shake, 0.25);
-  const cnt = b.hp < b.max * 0.5 ? 2 : 1, hp = Math.max(10, Math.round(b.max * 0.5));
   for (let k = 0; k < cnt; k++) {
     const x = clamp(b.x + (cnt === 1 ? 0 : (k ? 1.8 : -1.8)), -HALF + 0.8, HALF - 0.8);
-    const zb = makeZombie(9, hp / FOE[9].hp, x, b.z + 2.5, { big: true, el: tag('boss mid') });
+    const zb = makeZombie(9, hp / FOE[9].hp, x, b.z + 2.5, { big: true, el: tag('boss mid'), owner: b });
     zb.speed = ZOMBIE_SPEED * 1.6 * lvFoeSpd();
     mids.push(zb);
     boom(x, b.z + 2.5, 1.8, 0x8a939c, 1.2, 0.3);
@@ -956,11 +970,12 @@ function wolfBite(b, g, k) {
 
 function chickenBarrage(b, n) {
   const vis = Math.min(pl.n, MAX_ARMY); if (!vis) return;
+  const vol = { cap: Math.max(2, pl.n * 0.25), used: 0 };   // 한 번의 폭격으로 최대 25%까지만
   for (let k = 0; k < n; k++) {
     const c = cbombs.find(c => !c.active); if (!c) return;
     const [sx, sz] = soldierPos(Math.floor(Math.random() * vis));
     const tx = clamp(sx + (Math.random() * 2 - 1) * 1.2, -HALF + 0.5, HALF - 0.5), tz = sz + (Math.random() * 2 - 1) * 0.8;
-    Object.assign(c, { active: true, sx: b.x + (Math.random() * 2 - 1), sy: 5 * b.sc, sz: b.z + 1, tx, tz, t: -k * 0.12, T: 1.35, spin: Math.random() * 6 });
+    Object.assign(c, { active: true, sx: b.x + (Math.random() * 2 - 1), sy: 5 * b.sc, sz: b.z + 1, tx, tz, t: -k * 0.12, T: 1.35, spin: Math.random() * 6, vol });
     c.ring.position.set(tx, 0.04, tz); c.ring.visible = true;
   }
   banner('생닭 폭격!');
@@ -984,28 +999,28 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 // 각 스킬은 Lv1~5. 업그레이드하면 이름과 효과가 바뀌며 강해짐. 적을 처치할수록 게이지가 참.
 const UP_COST = [0, 80, 200, 400, 700];   // Lv n → n+1 비용 (index = 현재 레벨)
 const SKILLS = [
-  { id: 'water', icon: '🌊', unlock: 0, need: 30, tiers: [
+  { id: 'water', icon: '🌊', unlock: 0, need: 4, tiers: [
     { n: '물살',     d: '내 앞 한 줄로 물살을 쏴서 줄 안의 적 모두에게 큰 피해' },
     { n: '해일',     d: '화면 전체를 쓸고 가는 파도. 모든 적에게 피해, 뒤로 밀어냄' },
     { n: '대해일',   d: '더 큰 파도. 피해 증가, 3초 동안 적 이동속도 50% 감소, 보스 피해 1.5배' },
     { n: '대해일 II', d: '대해일 피해 30% 증가, 감속 4초' },
     { n: '쓰나미',   d: '최강 파도. 피해 대폭 증가, 감속 5초, 보스 피해 2배' },
   ] },
-  { id: 'gold', icon: '🚪', unlock: 3, need: 45, tiers: [
+  { id: 'gold', icon: '🚪', unlock: 3, need: 6, tiers: [
     { n: '황금문 ×4', d: '바로 앞에 양쪽 모두 ×4인 황금문이 생김' },
     { n: '황금문 ×5', d: '양쪽 모두 ×5인 황금문' },
     { n: '황금문 ×6', d: '양쪽 모두 ×6인 황금문' },
     { n: '황금문 ×7', d: '양쪽 모두 ×7인 황금문' },
     { n: '황금문 ×8', d: '양쪽 모두 ×8인 황금문 + 통과하면 총기 한 단계 업그레이드' },
   ] },
-  { id: 'shield', icon: '🛡️', unlock: 5, need: 35, tiers: [
+  { id: 'shield', icon: '🛡️', unlock: 5, need: 5, tiers: [
     { n: '방어막',     d: '3초 동안 부캉이가 한 마리도 죽지 않음' },
     { n: '방어막 II',  d: '무적 4초' },
     { n: '가시 방어막', d: '무적 5초 + 붙어 있는 적이 계속 피해를 입음' },
     { n: '가시 방어막 II', d: '무적 6초 + 가시 피해 증가' },
     { n: '심해 방어막', d: '무적 7초 + 가시 피해 대폭 증가' },
   ] },
-  { id: 'shark', icon: '🦈', unlock: 8, need: 45, tiers: [
+  { id: 'shark', icon: '🦈', unlock: 8, need: 6, tiers: [
     { n: '상어 소환',    d: '거대 상어 1마리가 8초 동안 적을 물어뜯음' },
     { n: '상어 소환 II', d: '10초 동안, 무는 힘 증가' },
     { n: '상어떼 소환',  d: '거대 상어 2마리가 10초 동안 싸움' },
@@ -1016,7 +1031,8 @@ const SKILLS = [
 const skillById = id => SKILLS.find(k => k.id === id);
 const skillLv = id => save.skills[id] || 0;
 const unlocked = sk => save.maxClear >= sk.unlock;
-let skCharge = 0, slowT = 0, shieldT = 0, shieldLv = 0;
+let skCharge = 0, slowT = 0, shieldT = 0, shieldLv = 0, skillHit = false;
+const skHurt = (t, d) => { skillHit = true; hurt(t, d); skillHit = false; };
 const wolvesKilled = () => bosses.filter(b => !b.final && b.dead).length;
 function addCharge(v) {
   if (state !== 'run') return;
@@ -1050,6 +1066,7 @@ function buildBigShark() {
 const allies = [0, 1, 2].map(() => ({ g: buildBigShark(), on: false }));
 
 function castSkill() {
+  if (paused) return;
   const sk = skillById(save.equip), lv = skillLv(sk.id);
   if (state !== 'run' || !lv || skCharge < sk.need) return;
   skCharge = 0;
@@ -1059,8 +1076,8 @@ function castSkill() {
     if (lv === 1) {
       // 물살: 내 앞 한 줄
       const x0 = cx, m = 0.6;
-      for (const zb of zombies) if (!zb.dead && !zb.air && zb.z > -RANGE && zb.z < 1 && Math.abs(zb.x - x0) < 1.8) hurt(zb, P * m);
-      for (const b of bosses) if (!b.dead && b.z > -RANGE && Math.abs(b.x - x0) < 3.2) hurt(b, P * m);
+      for (const zb of zombies) if (!zb.dead && !zb.air && zb.z > -RANGE && zb.z < 1 && Math.abs(zb.x - x0) < 1.8) skHurt(zb, P * m);
+      for (const b of bosses) if (!b.dead && b.z > -RANGE && Math.abs(b.x - x0) < 3.2) skHurt(b, P * m);
       jet = { x: x0, t: 0 };
     } else {
       const T = [null, null, { m: 0.8, push: 6, slow: 0, boss: 1 }, { m: 1.0, push: 9, slow: 3, boss: 1.5 }, { m: 1.3, push: 9, slow: 4, boss: 1.5 }, { m: 1.7, push: 12, slow: 5, boss: 2 }][lv];
@@ -1109,10 +1126,10 @@ function updateSkills(dt, front) {
     const P = skillBase();
     for (const zb of zombies) {
       if (zb.dead || zb.air || wave.hit.has(zb) || zb.z < wave.z) continue;
-      wave.hit.add(zb); hurt(zb, P * wave.m);
+      wave.hit.add(zb); skHurt(zb, P * wave.m);
       if (!zb.dead && !(zb.gate && !zb.gate.used)) { zb.attached = false; zb.z -= wave.push; }
     }
-    for (const b of bosses) if (!b.dead && !wave.hit.has(b) && b.z >= wave.z) { wave.hit.add(b); hurt(b, P * wave.m * wave.boss); }
+    for (const b of bosses) if (!b.dead && !wave.hit.has(b) && b.z >= wave.z) { wave.hit.add(b); skHurt(b, P * wave.m * wave.boss); }
     if (wave.z < -RANGE - 6) { waveMesh.visible = false; if (wave.slow) slowT = wave.slow; wave = null; }
   }
   // 방어막
@@ -1135,7 +1152,7 @@ function updateSkills(dt, front) {
       else {
         tx = tg.x; tz = tg.z + (tg.final !== undefined ? 2.5 * tg.sc : 0.6);
         if (Math.hypot(tx - a.x, tz - a.z) < 1.4) {
-          hurt(tg, skillBase() * a.bite);
+          skHurt(tg, skillBase() * a.bite);
           boom(tg.x, tg.z, 1.4, 0x4fc3f7, 0.8, 0.25);
           a.ph = 'back';
         }
@@ -1253,7 +1270,7 @@ function update(dt) {
       if (zb.z > 6) zb.dead = 1;
     } else {
       zb.z = front; zb.x += Math.sign(cx - zb.x) * Math.min(3 * dt, Math.abs(cx - zb.x) * 0.5);
-      if (shieldT > 0 && shieldLv >= 3) { hurt(zb, zb.max * [0, 0, 0, 0.9, 1.4, 2.2][shieldLv] * dt); if (zb.dead) continue; }
+      if (shieldT > 0 && shieldLv >= 3) { skHurt(zb, zb.max * [0, 0, 0, 0.9, 1.4, 2.2][shieldLv] * dt); if (zb.dead) continue; }
       zb.atk += dt;
       const heavy = zb.type === 1 || zb.type === 8 || zb.type === 5 || zb.type === 9;
       if (zb.atk >= (heavy ? 0.45 : 0.6) / lvFoeAtk()) { zb.atk = 0; killSoldiers(zb.big ? Math.max(2, Math.ceil(pl.n * 0.02)) : heavy ? 2 : 1); }
@@ -1295,7 +1312,8 @@ function update(dt) {
     if (state !== 'run') continue;
     const vis = Math.min(pl.n, MAX_ARMY); let n = 0;
     for (let i = 0; i < vis; i++) { const [x, z] = soldierPos(i); if (Math.hypot(x - c.tx, z - c.tz) < CB_R) n++; }
-    if (n) killSoldiers(Math.min(n * (pl.n / Math.max(1, vis)), Math.max(2, pl.n * 0.1)));
+    const k = Math.min(n * (pl.n / Math.max(1, vis)), Math.max(2, pl.n * 0.1), c.vol.cap - c.vol.used);
+    if (n && k > 0) { c.vol.used += k; killSoldiers(k); }
     boom(c.tx, c.tz, CB_R + 0.3, 0xff6a2a); shake = Math.max(shake, 0.35);
   }
   for (const rk of rocks) {
@@ -1650,9 +1668,17 @@ function resize() {
 addEventListener('resize', resize); resize();
 
 let last = performance.now(), T = 0;
+let paused = false;
+function setPause(v) {
+  paused = v && state === 'run';
+  document.getElementById('pause').hidden = !paused;
+  if (paused) document.getElementById('pauseInfo').textContent = `레벨 ${level} · 부캉이 ${pl.n}마리`;
+}
 function loop(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; T += dt;
-  update(dt); draw(T);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!paused) { T += dt; update(dt); }
+  draw(T);
+  document.getElementById('pauseBtn').hidden = state !== 'run';
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
@@ -1701,7 +1727,7 @@ function renderHub() {
   document.getElementById('skDetail').innerHTML =
     `<h3>${ok ? k.icon : '🔒'} ${cur.n}</h3>` +
     `<div class="lvpips" aria-label="레벨 ${lv}/5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</div>` +
-    `<p>${cur.d}</p>` + `<p>적 ${k.need}마리 처치마다 사용 가능 (보스 피해도 충전)</p>` +
+    `<p>${cur.d}</p>` + `<p>적에게 피해를 줄수록 충전 · 충전 속도 ${k.need <= 4 ? '빠름' : k.need <= 5 ? '보통' : '느림'}</p>` +
     (ok && nxt ? `<p class="nx">다음 Lv.${lv + 1}: <b>${nxt.n}</b> — ${nxt.d}</p>` : '') +
     (ok ? `<div class="skbtns"><button class="gold" id="upBtn" ${!nxt || save.coins < cost ? 'disabled' : ''}>${nxt ? `업그레이드 🪙${cost}` : '최대 레벨'}</button>` +
       `<button id="eqBtn" ${k.id === save.equip ? 'disabled' : ''}>${k.id === save.equip ? '장착 중' : '선택'}</button></div>`
@@ -1718,6 +1744,12 @@ document.getElementById('startBtn').addEventListener('click', () => { (document.
 document.getElementById('nextBtn').addEventListener('click', () => { level++; start(); });
 document.getElementById('retryBtn').addEventListener('click', start);
 document.getElementById('hubBtn').addEventListener('click', openHub);
+document.getElementById('pauseBtn').addEventListener('click', () => setPause(true));
+document.getElementById('resumeBtn').addEventListener('click', () => setPause(false));
+document.getElementById('pRetryBtn').addEventListener('click', () => { setPause(false); start(); });
+document.getElementById('pHubBtn').addEventListener('click', () => { setPause(false); openHub(); });
+addEventListener('keydown', e => { if ((e.key === 'Escape' || e.key.toLowerCase() === 'p') && state === 'run') setPause(!paused); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'run') setPause(true); });   // 다른 탭/앱으로 가면 자동 일시정지
 
 buildLevel(); state = 'menu';
 document.querySelector('.hud').hidden = true;
