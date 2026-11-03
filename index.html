@@ -69,7 +69,7 @@ body{background:var(--sky);color:var(--ink);font-family:var(--font-b);overflow:h
 .overlay{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:rgba(19,32,42,.35);overflow-y:auto;
   padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .card{background:var(--card);border-radius:14px;padding:24px 22px;max-width:420px;width:100%;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.25);display:grid;gap:12px}
-.card h1{margin:0;font-family:var(--font-d);font-weight:400;font-size:42px;letter-spacing:.02em;text-wrap:balance}
+.card h1{word-break:keep-all;margin:0;font-family:var(--font-d);font-weight:400;font-size:42px;letter-spacing:.02em;text-wrap:balance}
 .card h1 b{color:var(--army);font-weight:400}
 .card p{margin:0;color:var(--muted);line-height:1.6;font-size:14px}
 .rules{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
@@ -85,7 +85,56 @@ button:active{translate:0 3px;box-shadow:0 1px 0 #1c3f8c}
 button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
 .btns{display:grid;gap:10px}
-@media (prefers-reduced-motion:reduce){.pop,.banner{animation-duration:.01s}}
+/* 시작 화면 · 기지(레벨/스킬) · 스킬 버튼 */
+.card.title{gap:16px}
+.card.title .tagline{font-size:15px}
+details.howto{text-align:left;background:#f3efe4;border-radius:10px;padding:8px 12px}
+details.howto summary{cursor:pointer;font-weight:700;color:var(--ink)}
+details.howto[open]{display:grid;gap:10px}
+.hubcard{max-width:460px;text-align:left;gap:14px}
+.hubtop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hubtop h2{margin:0;font-family:var(--font-d);font-weight:400;font-size:28px}
+.coins{font-family:var(--font-d);font-size:22px;background:#fff3c4;color:#7a5600;padding:4px 12px;border-radius:999px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tabs button{font-size:18px;padding:9px;background:#e7e2d6;color:var(--ink);box-shadow:0 3px 0 #b9b2a2}
+.tabs button.on{background:var(--army);color:#fff;box-shadow:0 3px 0 #1c3f8c}
+.lvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;max-height:52vh;overflow-y:auto;padding:2px}
+.lvgrid button{font-size:20px;padding:12px 6px;display:grid;gap:2px;line-height:1.1}
+.lvgrid button small{font-family:var(--font-b);font-size:11.5px;font-weight:700;opacity:.85}
+.lvgrid button.done{background:#3a8f5a;box-shadow:0 4px 0 #24613b}
+.lvgrid button.next{background:#f08a24;box-shadow:0 4px 0 #b4600f}
+.lvgrid button:disabled{background:#d7d1c2;color:#8a8475;box-shadow:0 4px 0 #b9b2a2;cursor:default}
+.sklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sk{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px;text-align:left;padding:10px;background:#fff;color:var(--ink);border:2px solid #e7e2d6;box-shadow:0 3px 0 #e0dacb;font-family:var(--font-b);font-size:14px}
+.sk .ic{font-size:28px;width:40px;height:40px;display:grid;place-items:center;border-radius:50%;background:#1d3557}
+.sk b{font-family:var(--font-d);font-weight:400;font-size:17px;display:block}
+.sk small{color:var(--muted);font-weight:700;font-size:11.5px}
+.sk.sel{border-color:var(--army)}
+.sk.eq .ic{box-shadow:0 0 0 3px #ffd54a}
+.sk.lock{opacity:.55}
+.skdetail{background:#f3efe4;border-radius:10px;padding:12px;display:grid;gap:8px}
+.skdetail h3{margin:0;font-family:var(--font-d);font-weight:400;font-size:20px}
+.skdetail p{margin:0;font-size:13px;color:var(--muted);line-height:1.55}
+.skdetail .nx{color:#1c3f8c}
+.lvpips{display:flex;gap:4px}
+.lvpips i{width:18px;height:6px;border-radius:3px;background:#d7d1c2}
+.lvpips i.on{background:#f08a24}
+.skbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.skbtns button{font-size:17px;padding:10px}
+.skbtns button.gold{background:#e0a400;box-shadow:0 4px 0 #9a7000}
+.skbtns button:disabled{background:#d7d1c2;color:#8a8475;box-shadow:0 4px 0 #b9b2a2;cursor:default}
+.rescoins{font-family:var(--font-d);font-size:22px;color:#7a5600}
+.resline{font-size:12.5px;color:var(--muted)}
+#skillBtn{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 34px);z-index:7;
+  width:86px;height:86px;border-radius:50%;padding:0;display:grid;place-items:center;
+  background:conic-gradient(#ffd54a calc(var(--p,0) * 1turn), rgba(255,255,255,.45) 0);box-shadow:0 4px 0 rgba(0,0,0,.25)}
+#skillBtn .in{width:70px;height:70px;border-radius:50%;background:#1d3557;display:grid;place-items:center;font-size:34px;line-height:1}
+#skillBtn .nm{position:absolute;top:100%;margin-top:6px;left:50%;translate:-50% 0;font-size:13px;white-space:nowrap;color:#fff;background:rgba(19,32,42,.7);padding:1px 8px;border-radius:6px}
+#skillBtn.ready{animation:ready 1s ease-in-out infinite}
+#skillBtn.ready .in{background:#2b63d9}
+#skillBtn:not(.ready){cursor:default}
+@keyframes ready{50%{scale:1.08;box-shadow:0 0 22px #ffd54a,0 4px 0 rgba(0,0,0,.25)}}
+@media (prefers-reduced-motion:reduce){.pop,.banner,#skillBtn.ready{animation-duration:.01s}}
 </style>
 </head>
 <body>
@@ -97,9 +146,11 @@ button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
 </div>
 
 <div class="overlay" id="menu">
-  <div class="card">
+  <div class="card title">
     <h1>부캉이의 <b>바다로 가는 길</b></h1>
-    <p>부산 북항 수로에 갇힌 부캉이 무리. 자동으로 쏘면서 좌우로 움직여 문을 고르고, 늑구와 푸바오를 넘어 바다로 나가세요.</p>
+    <p class="tagline">부산 북항 수로에 갇힌 부캉이 무리. 문을 고르고, 늑구와 푸바오를 넘어 바다로!</p>
+    <button id="startBtn">시작</button>
+    <details class="howto"><summary>게임 방법</summary>
     <div class="rules"><span class="chip g">+10</span><span class="chip g">×2</span><span class="chip w">▲ 기관총</span><span class="chip g">연사 +30%</span><span class="chip b">−8</span><span class="chip b">▼ 권총</span></div>
     <p style="font-size:12.5px">총기: 권총 → 기관총 → 바주카포 · 숫자·연사·파워 문은 쏘는 만큼 올라갑니다.</p>
     <div class="foes">
@@ -112,20 +163,40 @@ button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
       <div><i style="background:#ff6b8a"></i><span><b>치료병</b> 뒤에서 주변을 회복</span></div>
       <div><i style="background:#6b4226"></i><span><b>문 파괴범</b> 문 숫자를 깎음</span></div>
       <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 중간늑구를 부르고 문을 물어뜯음</span></div>
-      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 구르기·생닭 폭격, 체력 25%에서 각성</span></div>
+      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 대나무 던지기·생닭 폭격, 체력 25%에서 각성</span></div>
     </div>
-    <p style="font-size:12.5px">PC: ← → 또는 A D · 모바일: 화면 드래그</p>
-    <button id="startBtn">출발</button>
+    <p style="font-size:12.5px">PC: ← → 또는 A D, 스킬은 스페이스 · 모바일: 화면 드래그, 스킬은 오른쪽 아래 버튼</p>
+    </details>
   </div>
 </div>
+
+<div class="overlay" id="hub" hidden>
+  <div class="card hubcard">
+    <div class="hubtop"><h2>부캉이 기지</h2><span class="coins">🪙 <b id="coinN">0</b></span></div>
+    <div class="tabs" role="tablist">
+      <button class="on" data-tab="lv" role="tab">레벨</button>
+      <button data-tab="sk" role="tab">스킬</button>
+    </div>
+    <div id="tabLv"><div class="lvgrid" id="lvGrid"></div></div>
+    <div id="tabSk" hidden>
+      <div class="sklist" id="skList"></div>
+      <div class="skdetail" id="skDetail"></div>
+    </div>
+  </div>
+</div>
+
+<button id="skillBtn" hidden aria-label="스킬 사용"><span class="in" id="skIcon">🌊</span><span class="nm" id="skName">물살</span></button>
 
 <div class="overlay" id="result" hidden>
   <div class="card">
     <h1 id="resTitle">승리</h1>
     <p id="resText"></p>
+    <div class="rescoins" id="resCoins"></div>
+    <div class="resline" id="resLine"></div>
     <div class="btns">
       <button id="nextBtn">다음 레벨</button>
       <button class="ghost" id="retryBtn">다시 하기</button>
+      <button class="ghost" id="hubBtn">기지로</button>
     </div>
   </div>
 </div>
@@ -404,10 +475,21 @@ for (let i = 0; i < 12; i++) {
   rocks.push({ m, ring, active: false });
 }
 const ROCK_R = 1.8, BOMB_R = 3.0;
-// 푸바오 구르기 경고 줄
+// 푸바오 대나무 경고 줄
 const ROLL_W = 3.4;
 const rollStripe = new THREE.Mesh(new THREE.PlaneGeometry(ROLL_W, 1), new THREE.MeshBasicMaterial({ color: 0xff2d2d, transparent: true, opacity: 0.4, depthWrite: false }));
 rollStripe.rotation.x = -Math.PI / 2; rollStripe.visible = false; scene.add(rollStripe);
+// 푸바오가 던지는 대나무 (클래시 통나무처럼 한 줄을 굴러옴)
+const bamboo = new THREE.Group();
+{
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, ROLL_W, 10), new THREE.MeshPhongMaterial({ color: 0x7cb342, flatShading: true }));
+  stalk.rotation.z = Math.PI / 2; bamboo.add(stalk);
+  const nodeM = new THREE.MeshPhongMaterial({ color: 0x4e7a26, flatShading: true });
+  for (const x of [-1.15, 0, 1.15]) { const n = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.14, 10), nodeM); n.rotation.z = Math.PI / 2; n.position.x = x; bamboo.add(n); }
+  const leafM = new THREE.MeshPhongMaterial({ color: 0x9ccc65, flatShading: true });
+  for (const [x, a] of [[1.5, -0.6], [-1.4, 0.7]]) { const l = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.95, 4), leafM); l.position.set(x, 0.55, 0); l.rotation.z = a; bamboo.add(l); }
+}
+bamboo.visible = false; scene.add(bamboo);
 // 생닭 폭격: 하늘로 던진 생닭 + 낙하 지점 표시
 const CB_R = 2.4, cbombs = [];
 for (let i = 0; i < 24; i++) {
@@ -478,13 +560,14 @@ function drawGate(g, k) {
   const op = g.ops[k], c = g.canvases[k], x = c.getContext('2d');
   const [big, small] = opLabel(op);
   x.clearRect(0, 0, 256, 128);
-  x.fillStyle = op.t === 'wup' ? 'rgba(240,138,36,0.85)' : opGood(op) ? 'rgba(43,99,217,0.78)' : 'rgba(217,63,50,0.78)';
+  x.fillStyle = g.gold ? 'rgba(232,170,20,0.95)' : op.t === 'wup' ? 'rgba(240,138,36,0.85)' : opGood(op) ? 'rgba(43,99,217,0.78)' : 'rgba(217,63,50,0.78)';
   x.fillRect(0, 0, 256, 128);
   x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 120);
   x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
   let fs = 84; x.font = fs + 'px "Black Han Sans", sans-serif';
   while (x.measureText(big).width > 226 && fs > 30) { fs -= 4; x.font = fs + 'px "Black Han Sans", sans-serif'; }
   x.fillText(big, 128, small ? 56 : 68);
+  if (g.gold && !small) { x.font = '22px "Black Han Sans", sans-serif'; x.fillText(g.goldUp ? '황금문 · 총기 ▲' : '황금문', 128, 108); }
   if (small) { x.font = '24px "Black Han Sans", sans-serif'; x.globalAlpha = 0.9; x.fillText(small, 128, 104); x.globalAlpha = 1; }
   if (g.bit && g.bit[k]) {
     // 물린 자국: 위아래 톱니
@@ -542,7 +625,7 @@ function clearLevel() {
   }
   bosses.forEach(b => b.el.remove()); mids.forEach(m => m.el.remove()); mids = [];
   rocks.forEach(r => { r.active = false; r.m.visible = r.ring.visible = false; });
-  cbombs.forEach(c => { c.active = false; c.ring.visible = false; }); rollStripe.visible = false;
+  cbombs.forEach(c => { c.active = false; c.ring.visible = false; }); rollStripe.visible = false; bamboo.visible = false;
   labels.querySelectorAll('.pop').forEach(e => e.remove());
 }
 
@@ -720,6 +803,7 @@ function fire(dt) {
 
 function killSoldiers(n) {
   if (state !== 'run' || n <= 0) return;
+  if (shieldT > 0) { if (Math.random() < 0.2) popText('막음!', cx, 2.2, 0, '#7fe3ff'); return; }
   n *= lvDef();
   n = Math.min(pl.n, Math.floor(n) + (Math.random() < n % 1 ? 1 : 0));
   pl.n -= n; lost += n; shake = 0.15; hitFlash = 0.15;
@@ -728,6 +812,7 @@ function killSoldiers(n) {
 
 function hurt(tg, dmg) {
   if (tg.dead) return;
+  if (tg.final !== undefined) addCharge(Math.min(dmg, tg.hp) / tg.max * 15);
   if (tg.final) {
     // 접전 보정: 보스 체력 비율이 내 병력 비율을 따라가게 해서, 병력이 거의 바닥날 때쯤 보스가 쓰러짐
     const e = clamp(6 / tg.armyStart + 0.02, 0.03, 0.4);          // 끝날 때 남길 병력 비율 (약 5~6명)
@@ -747,6 +832,7 @@ function hurt(tg, dmg) {
   tg.hp -= dmg; tg.flash = 1;
   if (tg.hp > 0) return;
   tg.dead = 0.001;
+  if (tg.final === undefined) addCharge(tg.big ? 5 : 1);
   if (tg.final !== undefined) {           // 보스
     if (tg.final && state === 'run') finish(true);
     return;
@@ -788,6 +874,24 @@ function finish(win) {
     ? `${WEAPONS[pl.tier].name}을 든 부캉이 ${pl.n}마리가 레벨 ${level} 수로를 빠져나왔습니다. 바다까지 한 걸음 더.`
     : `부캉이 무리가 모두 쓰러졌습니다. 레벨 ${level}을 다시 도전하세요.`;
   document.getElementById('nextBtn').hidden = !win;
+  // 코인 정산
+  const base = 30 + 15 * level, first = win && level > save.maxClear, wk = wolvesKilled();
+  let got, line;
+  if (win) {
+    got = base * (first ? 2 : 0.5) + wk * 5 * level;
+    line = `클리어 ${first ? base + ' × 2 (첫 클리어)' : base + ' × 0.5 (재도전)'}` + (wk ? ` · 늑구 ${wk}마리 +${wk * 5 * level}` : '');
+    save.maxClear = Math.max(save.maxClear, level);
+  } else {
+    const prog = clamp(clock / totalTime, 0, 1);
+    got = base * 0.3 * prog + wk * 5 * level;
+    line = `진행 ${Math.round(prog * 100)}% 보상` + (wk ? ` · 늑구 ${wk}마리 +${wk * 5 * level}` : '');
+  }
+  got = Math.round(got);
+  const newSkills = SKILLS.filter(k => unlocked(k) && !save.skills[k.id]);
+  newSkills.forEach(k => { save.skills[k.id] = 1; });
+  save.coins += got; persist();
+  document.getElementById('resCoins').textContent = `🪙 +${got}`;
+  document.getElementById('resLine').textContent = line + (newSkills.length ? ` · 새 스킬 해금: ${newSkills.map(k => k.tiers[0].n).join(', ')}` : '');
   setTimeout(() => { document.getElementById('result').hidden = false; }, win ? 900 : 500);
 }
 
@@ -797,6 +901,7 @@ function passGate(g) {
   const before = pl.n, tierBefore = pl.tier;
   const [big] = opLabel(op);
   pl = applyTo(pl, op);
+  if (g.goldUp) pl = applyTo(pl, { t: 'wup' });
   popText(big, cx, 2.4, 0, opGood(op) ? '#ffffff' : '#ffd0c9');
   g.meshes[k].visible = false; g.meshes[1 - k].material.opacity = 0.3;
   if (pl.n < before || pl.tier < tierBefore) shake = 0.25;
@@ -868,6 +973,203 @@ function throwRock(b) {
   r.m.visible = r.ring.visible = true; r.ring.position.set(tx, 0.03, tz);
 }
 
+
+// ---------- 저장 (이 브라우저에만 저장됨) ----------
+const SAVE_KEY = 'bukangi-save-v1';
+let save = { coins: 0, maxClear: 0, skills: { water: 1 }, equip: 'water' };
+try { const raw = localStorage.getItem(SAVE_KEY); if (raw) save = Object.assign(save, JSON.parse(raw)); } catch (e) {}
+function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
+
+// ---------- 스킬 ----------
+// 각 스킬은 Lv1~5. 업그레이드하면 이름과 효과가 바뀌며 강해짐. 적을 처치할수록 게이지가 참.
+const UP_COST = [0, 80, 200, 400, 700];   // Lv n → n+1 비용 (index = 현재 레벨)
+const SKILLS = [
+  { id: 'water', icon: '🌊', unlock: 0, need: 30, tiers: [
+    { n: '물살',     d: '내 앞 한 줄로 물살을 쏴서 줄 안의 적 모두에게 큰 피해' },
+    { n: '해일',     d: '화면 전체를 쓸고 가는 파도. 모든 적에게 피해, 뒤로 밀어냄' },
+    { n: '대해일',   d: '더 큰 파도. 피해 증가, 3초 동안 적 이동속도 50% 감소, 보스 피해 1.5배' },
+    { n: '대해일 II', d: '대해일 피해 30% 증가, 감속 4초' },
+    { n: '쓰나미',   d: '최강 파도. 피해 대폭 증가, 감속 5초, 보스 피해 2배' },
+  ] },
+  { id: 'gold', icon: '🚪', unlock: 3, need: 45, tiers: [
+    { n: '황금문 ×4', d: '바로 앞에 양쪽 모두 ×4인 황금문이 생김' },
+    { n: '황금문 ×5', d: '양쪽 모두 ×5인 황금문' },
+    { n: '황금문 ×6', d: '양쪽 모두 ×6인 황금문' },
+    { n: '황금문 ×7', d: '양쪽 모두 ×7인 황금문' },
+    { n: '황금문 ×8', d: '양쪽 모두 ×8인 황금문 + 통과하면 총기 한 단계 업그레이드' },
+  ] },
+  { id: 'shield', icon: '🛡️', unlock: 5, need: 35, tiers: [
+    { n: '방어막',     d: '3초 동안 부캉이가 한 마리도 죽지 않음' },
+    { n: '방어막 II',  d: '무적 4초' },
+    { n: '가시 방어막', d: '무적 5초 + 붙어 있는 적이 계속 피해를 입음' },
+    { n: '가시 방어막 II', d: '무적 6초 + 가시 피해 증가' },
+    { n: '심해 방어막', d: '무적 7초 + 가시 피해 대폭 증가' },
+  ] },
+  { id: 'shark', icon: '🦈', unlock: 8, need: 45, tiers: [
+    { n: '상어 소환',    d: '거대 상어 1마리가 8초 동안 적을 물어뜯음' },
+    { n: '상어 소환 II', d: '10초 동안, 무는 힘 증가' },
+    { n: '상어떼 소환',  d: '거대 상어 2마리가 10초 동안 싸움' },
+    { n: '상어떼 소환 II', d: '2마리, 12초, 무는 힘 증가' },
+    { n: '메갈로돈 떼',  d: '3마리, 12초, 무는 힘 대폭 증가' },
+  ] },
+];
+const skillById = id => SKILLS.find(k => k.id === id);
+const skillLv = id => save.skills[id] || 0;
+const unlocked = sk => save.maxClear >= sk.unlock;
+let skCharge = 0, slowT = 0, shieldT = 0, shieldLv = 0;
+const wolvesKilled = () => bosses.filter(b => !b.final && b.dead).length;
+function addCharge(v) {
+  if (state !== 'run') return;
+  const sk = skillById(save.equip);
+  skCharge = Math.min(sk.need, skCharge + v);
+}
+// 스킬 피해 기준: 지금 내 화력에 맞춘 적 체력 기준값
+const skillBase = () => Math.max(1, strength(pl) * diff * lvFoeHp());
+
+// 물살/파도 연출
+const waterMat = new THREE.MeshBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0, depthWrite: false });
+const jetMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), waterMat); jetMesh.visible = false; scene.add(jetMesh);
+const waveMesh = new THREE.Mesh(new THREE.BoxGeometry(W + 0.4, 2.2, 2.6), new THREE.MeshBasicMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.75, depthWrite: false }));
+const foam = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 0.35, 0.9), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+foam.position.set(0, 1.2, 0.9); waveMesh.add(foam); waveMesh.visible = false; scene.add(waveMesh);
+let jet = null, wave = null;
+// 방어막 연출
+const domeMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
+domeMesh.visible = false; scene.add(domeMesh);
+// 거대 상어
+function buildBigShark() {
+  const g = new THREE.Group(), blue = phong(0x4f8fd6), white = phong(0xeef4f8), dark = phong(0x2f5f99);
+  part(g, blue, SPH, Mx(0, 0.9, 0, 0, 0, 0, 1.2, 1.0, 3.4));
+  part(g, white, SPH, Mx(0, 0.65, 0.25, 0, 0, 0, 1.0, 0.65, 2.8));
+  part(g, dark, CONE, Mx(0, 1.65, -0.1, -0.35, 0, 0, 0.45, 1.0, 0.9));
+  part(g, dark, CONE, Mx(0, 1.0, -1.95, Math.PI / 2 + 0.2, 0, 0, 0.35, 1.0, 1.1));
+  [-1, 1].forEach(sx => { part(g, dark, CONE, Mx(sx * 0.65, 0.6, 0.4, 0, 0, sx * 1.9, 0.25, 0.8, 0.5)); part(g, new THREE.MeshBasicMaterial({ color: 0x111111 }), SPH, Mx(sx * 0.42, 1.05, 1.35, 0, 0, 0, 0.13)); });
+  part(g, new THREE.MeshBasicMaterial({ color: 0xffffff }), new THREE.BoxGeometry(0.7, 0.08, 0.1), Mx(0, 0.62, 1.62));
+  g.scale.setScalar(0.95); g.visible = false; scene.add(g); return g;
+}
+const allies = [0, 1, 2].map(() => ({ g: buildBigShark(), on: false }));
+
+function castSkill() {
+  const sk = skillById(save.equip), lv = skillLv(sk.id);
+  if (state !== 'run' || !lv || skCharge < sk.need) return;
+  skCharge = 0;
+  const P = skillBase();
+  banner(sk.icon + ' ' + sk.tiers[lv - 1].n + '!');
+  if (sk.id === 'water') {
+    if (lv === 1) {
+      // 물살: 내 앞 한 줄
+      const x0 = cx, m = 0.6;
+      for (const zb of zombies) if (!zb.dead && !zb.air && zb.z > -RANGE && zb.z < 1 && Math.abs(zb.x - x0) < 1.8) hurt(zb, P * m);
+      for (const b of bosses) if (!b.dead && b.z > -RANGE && Math.abs(b.x - x0) < 3.2) hurt(b, P * m);
+      jet = { x: x0, t: 0 };
+    } else {
+      const T = [null, null, { m: 0.8, push: 6, slow: 0, boss: 1 }, { m: 1.0, push: 9, slow: 3, boss: 1.5 }, { m: 1.3, push: 9, slow: 4, boss: 1.5 }, { m: 1.7, push: 12, slow: 5, boss: 2 }][lv];
+      wave = { z: 0, ...T, hit: new Set() };
+    }
+  } else if (sk.id === 'gold') {
+    const mult = 3 + lv;
+    let g = gates.find(o => !o.used && o.z > -36 && o.z < -12);
+    if (!g) { spawnGate({ ops: [{ t: 'mul', v: mult }, { t: 'mul', v: mult }] }); g = gates[gates.length - 1]; g.z = -30; g.group.position.z = g.z; }
+    else { g.ops = [{ t: 'mul', v: mult }, { t: 'mul', v: mult }]; g.acc = [0, 0]; g.bit = null; }
+    g.gold = true; g.goldUp = lv >= 5; g.bitten = true; drawGate(g, 0); drawGate(g, 1);
+    for (const zb of zombies) if (zb.gate === g) zb.breaker = false;
+    boom(0, g.z, 4, 0xffd54a, 1.6, 0.5);
+  } else if (sk.id === 'shield') {
+    shieldT = 2 + lv; shieldLv = lv;
+  } else if (sk.id === 'shark') {
+    const cnt = lv >= 5 ? 3 : lv >= 3 ? 2 : 1, dur = lv >= 4 ? 12 : lv >= 2 ? 10 : 8, bite = [0, 0.35, 0.45, 0.45, 0.55, 0.75][lv];
+    allies.forEach((a, i) => {
+      a.on = i < cnt; a.g.visible = a.on; if (!a.on) return;
+      Object.assign(a, { t: dur, off: cnt === 1 ? 0 : (i - (cnt - 1) / 2) * 2.8, x: cx, z: 6, ph: 'home', cd: 0.3 + i * 0.15, bite, tgt: null });
+    });
+  }
+}
+
+function sharkTarget() {
+  let best = null, bs = -Infinity;
+  for (const zb of zombies) if (!zb.dead && !zb.air && zb.z > -RANGE && zb.z < 2 && zb.z > bs) { best = zb; bs = zb.z; }
+  for (const b of bosses) if (!b.dead && b.z > -RANGE && b.z > bs) { best = b; bs = b.z; }
+  return best;
+}
+
+function updateSkills(dt, front) {
+  const sk = skillById(save.equip);
+  if (state === 'run') { slowT = Math.max(0, slowT - dt); shieldT = Math.max(0, shieldT - dt); }
+  // 물살
+  if (jet) {
+    jet.t += dt; const a = Math.max(0, 1 - jet.t / 0.6);
+    jetMesh.visible = a > 0; waterMat.opacity = 0.7 * a;
+    jetMesh.scale.set(3.4 * (0.6 + 0.4 * a), 0.7, RANGE); jetMesh.position.set(jet.x, 0.5, -RANGE / 2 - 1);
+    if (a <= 0) jet = null;
+  }
+  // 파도: 부대 앞에서 출발해 멀리까지 쓸고 감
+  if (wave) {
+    wave.z -= 55 * dt;
+    waveMesh.visible = true; waveMesh.position.set(0, 1.0, wave.z);
+    const P = skillBase();
+    for (const zb of zombies) {
+      if (zb.dead || zb.air || wave.hit.has(zb) || zb.z < wave.z) continue;
+      wave.hit.add(zb); hurt(zb, P * wave.m);
+      if (!zb.dead && !(zb.gate && !zb.gate.used)) { zb.attached = false; zb.z -= wave.push; }
+    }
+    for (const b of bosses) if (!b.dead && !wave.hit.has(b) && b.z >= wave.z) { wave.hit.add(b); hurt(b, P * wave.m * wave.boss); }
+    if (wave.z < -RANGE - 6) { waveMesh.visible = false; if (wave.slow) slowT = wave.slow; wave = null; }
+  }
+  // 방어막
+  const r = radius(pl.n) + 1.1;
+  domeMesh.visible = shieldT > 0 && state === 'run';
+  if (domeMesh.visible) { domeMesh.position.set(cx, 0, -0.2); domeMesh.scale.set(r, r * 0.7, r); domeMesh.material.opacity = 0.2 + 0.12 * Math.abs(Math.sin(clock * 6)) + (shieldT < 1 ? 0.15 * Math.sin(clock * 30) : 0); }
+  // 상어
+  for (const a of allies) {
+    if (!a.on) continue;
+    if (state === 'run') a.t -= dt;
+    const hx = clamp(cx + a.off, -HALF + 1, HALF - 1), hz = front - 11;
+    let tx = hx, tz = hz;
+    if (a.ph === 'home') {
+      a.cd -= dt;
+      if (a.cd <= 0 && state === 'run') { a.tgt = sharkTarget(); if (a.tgt) a.ph = 'go'; else a.cd = 0.3; }
+    }
+    if (a.ph === 'go') {
+      const tg = a.tgt;
+      if (!tg || tg.dead || tg.air) { a.ph = 'back'; }
+      else {
+        tx = tg.x; tz = tg.z + (tg.final !== undefined ? 2.5 * tg.sc : 0.6);
+        if (Math.hypot(tx - a.x, tz - a.z) < 1.4) {
+          hurt(tg, skillBase() * a.bite);
+          boom(tg.x, tg.z, 1.4, 0x4fc3f7, 0.8, 0.25);
+          a.ph = 'back';
+        }
+      }
+    }
+    if (a.ph === 'back' && Math.hypot(hx - a.x, hz - a.z) < 1.2) { a.ph = 'home'; a.cd = 0.45; }
+    const sp = a.ph === 'home' ? 8 : 34, dx = tx - a.x, dz = tz - a.z, d = Math.hypot(dx, dz);
+    if (d > 0.01) { const st = Math.min(d, sp * dt); a.x += dx / d * st; a.z += dz / d * st; }
+    const face = d > 0.3 ? Math.atan2(dx, dz) : 0;
+    a.g.position.set(a.x, Math.sin(clock * 4 + a.off) * 0.15, a.z);
+    a.g.rotation.set(0, face, Math.sin(clock * 6 + a.off) * 0.08);
+    if (a.t <= 0 || state === 'menu') { a.on = false; a.g.visible = false; boom(a.x, a.z, 2, 0x4fc3f7, 0.6, 0.3); }
+  }
+  // 버튼
+  const btn = document.getElementById('skillBtn');
+  btn.hidden = state !== 'run';
+  if (!btn.hidden) {
+    const lv = skillLv(sk.id), p = skCharge / sk.need;
+    btn.style.setProperty('--p', p.toFixed(3));
+    btn.classList.toggle('ready', p >= 1);
+    btn.setAttribute('aria-label', sk.tiers[lv - 1].n + (p >= 1 ? ' 사용 가능' : ` 충전 ${Math.round(p * 100)}%`));
+  }
+}
+function resetSkills() {
+  const sk = skillById(save.equip);
+  skCharge = sk.need * 0.5; slowT = 0; shieldT = 0; jet = null; wave = null;
+  jetMesh.visible = waveMesh.visible = domeMesh.visible = false;
+  allies.forEach(a => { a.on = false; a.g.visible = false; });
+  document.getElementById('skIcon').textContent = sk.icon;
+  document.getElementById('skName').textContent = sk.tiers[skillLv(sk.id) - 1].n;
+}
+document.getElementById('skillBtn').addEventListener('click', castSkill);
+addEventListener('keydown', e => { if (e.code === 'Space' && state === 'run') { e.preventDefault(); castSkill(); } });
+
 function update(dt) {
   if (state === 'menu') return;
   scroll += SCROLL * dt;
@@ -879,6 +1181,8 @@ function update(dt) {
     fire(dt);
   }
   const r = radius(pl.n), front = -r - 0.3;
+  updateSkills(dt, front);
+  const sf = slowT > 0 ? 0.5 : 1;   // 대해일 감속
 
   // 문
   for (const g of gates) {
@@ -936,9 +1240,9 @@ function update(dt) {
           }
           continue;
         }
-        zb.z += zb.speed * dt;
+        zb.z += zb.speed * dt * sf;
         if (zb.z > front - (zb.big ? 13 : 10) && state === 'run') zb.leap = { t: 0, z0: zb.z, x0: zb.x };
-      } else zb.z += zb.speed * dt;
+      } else zb.z += zb.speed * dt * sf;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
       if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : zb.type === 9 ? 7 : 2.4) * dt, Math.abs(cx - zb.x));
       zb.x = clamp(zb.x, -HALF + 0.3, HALF - 0.3);
@@ -949,6 +1253,7 @@ function update(dt) {
       if (zb.z > 6) zb.dead = 1;
     } else {
       zb.z = front; zb.x += Math.sign(cx - zb.x) * Math.min(3 * dt, Math.abs(cx - zb.x) * 0.5);
+      if (shieldT > 0 && shieldLv >= 3) { hurt(zb, zb.max * [0, 0, 0, 0.9, 1.4, 2.2][shieldLv] * dt); if (zb.dead) continue; }
       zb.atk += dt;
       const heavy = zb.type === 1 || zb.type === 8 || zb.type === 5 || zb.type === 9;
       if (zb.atk >= (heavy ? 0.45 : 0.6) / lvFoeAtk()) { zb.atk = 0; killSoldiers(zb.big ? Math.max(2, Math.ceil(pl.n * 0.02)) : heavy ? 2 : 1); }
@@ -1017,7 +1322,7 @@ function update(dt) {
       b.mesh.rotation.set(0, 0, Math.min(Math.PI / 2, b.dead * 4));   // 옆으로 쓰러짐
       b.mesh.position.set(b.x, -Math.max(0, b.dead - 0.6) * 1.5, b.z); // 쓰러진 뒤 물에 가라앉음
       b.mesh.visible = b.dead < 3 && b.z < 18;
-      if (b.final) rollStripe.visible = false;
+      if (b.final) { rollStripe.visible = false; bamboo.visible = false; }
       b.el.hidden = true; continue;
     }
     if (b.final && !b.phase2 && b.hp < b.max * 0.5) {
@@ -1031,40 +1336,41 @@ function update(dt) {
       boom(b.x, b.z, 7, 0xffd54a, 3, 0.6); shake = Math.max(shake, 0.5);
       banner('푸바오 각성!');
     }
-    // 푸바오 구르기: 경고 → 몸을 말아 한 줄로 굴러옴 → 부대 앞에서 멈춤
+    // 푸바오 대나무 던지기: 경고 줄 → 대나무를 들어 던짐 → 그 줄을 굴러와 줄 안 병력 30~50% 날림
     if (b.final && b.roll && state === 'run') {
       const Rl = b.roll; Rl.t += dt;
+      const top = { x: b.x, y: 8.6, z: b.z + 0.6 };
       if (Rl.ph === 'warn') {
-        const q = Math.min(1, Rl.t / 1.1);
-        b.x += (Rl.lx - b.x) * Math.min(1, dt * 8);
-        if (Rl.back) b.z += (Rl.z0 - b.z) * Math.min(1, dt * 6);
-        b.pivot.scale.set(1 + 0.15 * q, 1 - 0.25 * q, 1 + 0.15 * q);
-        b.pivot.rotation.x = 0.6 * q;
-        const z1 = b.z + 2, z2 = front + 3, len = Math.max(1, z2 - z1);
+        const q = Math.min(1, Rl.t / 1.0);
+        b.arms.forEach(a => a.rotation.x = -2.7 * q);
+        bamboo.visible = true; bamboo.position.set(top.x, top.y - 1.2 * (1 - q), top.z); bamboo.rotation.set(0, 0, 0);
+        const z1 = b.z + 3, z2 = front + 3, len = Math.max(1, z2 - z1);
         rollStripe.visible = true; rollStripe.scale.set(1, len, 1); rollStripe.position.set(Rl.lx, 0.05, (z1 + z2) / 2);
         rollStripe.material.opacity = 0.25 + 0.35 * Math.abs(Math.sin(Rl.t * 12));
-        if (Rl.t >= 1.1) { Rl.ph = 'roll'; Rl.t = 0; Rl.zs = b.z; Rl.hit = false; }
+        if (Rl.t >= 1.0) { Rl.ph = 'fly'; Rl.t = 0; Rl.land = b.z + 4; }
+      } else if (Rl.ph === 'fly') {
+        const q = Math.min(1, Rl.t / 0.35);
+        b.arms.forEach(a => a.rotation.x = -2.7 + 2.9 * q);
+        bamboo.position.set(top.x + (Rl.lx - top.x) * q, top.y + (0.45 - top.y) * q + Math.sin(q * Math.PI) * 2, top.z + (Rl.land - top.z) * q);
+        bamboo.rotation.x += dt * 10;
+        if (q >= 1) { Rl.ph = 'roll'; Rl.t = 0; Rl.bz = Rl.land; Rl.hit = false; boom(Rl.lx, Rl.land, 1.6, 0x9ccc65, 0.4, 0.25); shake = Math.max(shake, 0.25); }
       } else if (Rl.ph === 'roll') {
-        const q = Math.min(1, Rl.t / 0.55), zEnd = front - b.reach * 0.6;
-        b.z = Rl.zs + (zEnd - Rl.zs) * q * q; b.x = Rl.lx;
-        b.pivot.rotation.x += dt * 22; b.pivot.scale.set(1.15, 0.75, 1.15);
-        rollStripe.material.opacity = 0.6;
-        if (!Rl.hit && b.z >= front - b.reach - 1) {
+        b.arms.forEach(a => a.rotation.x *= 1 - Math.min(1, dt * 8));
+        Rl.bz += 30 * dt;
+        bamboo.position.set(Rl.lx, 0.45, Rl.bz); bamboo.rotation.x += 30 * dt / 0.45;
+        rollStripe.material.opacity = 0.55;
+        if (!Rl.hit && Rl.bz >= front - 0.5) {
           Rl.hit = true;
           const vis = Math.min(pl.n, MAX_ARMY); let c = 0;
           for (let i = 0; i < vis; i++) if (Math.abs(soldierPos(i)[0] - Rl.lx) < ROLL_W / 2 + 0.3) c++;
-          if (c) killSoldiers(Math.min(c * (pl.n / Math.max(1, vis)) * 0.9, pl.n * 0.45));
-          boom(Rl.lx, front, 3, 0xefeadf, 1.2, 0.35); shake = Math.max(shake, 0.6); hitFlash = 0.12;
+          const frac = 0.3 + Math.random() * 0.2;
+          if (c) killSoldiers(c * (pl.n / Math.max(1, vis)) * frac);
+          boom(Rl.lx, front, 3, 0x9ccc65, 1.0, 0.35); shake = Math.max(shake, 0.6); hitFlash = 0.12;
         }
-        if (q >= 1) { Rl.ph = 'rec'; Rl.t = 0; rollStripe.visible = false; }
-      } else {
-        const q = Math.min(1, Rl.t / 0.5);
-        b.pivot.rotation.x *= 1 - Math.min(1, dt * 10); b.pivot.scale.set(1.15 - 0.15 * q, 0.75 + 0.25 * q, 1.15 - 0.15 * q);
-        b.z = front - b.reach; b.attached = true;
-        if (q >= 1) {
-          b.pivot.rotation.x = 0; b.pivot.scale.set(1, 1, 1); b.roll = null;
+        if (Rl.bz > 10) {
+          bamboo.visible = false; rollStripe.visible = false; b.roll = null;
           b.rollCd = (b.phase3 ? 3.5 : b.phase2 ? 5.5 : 7.5) / lvFoeAtk();
-          if (b.phase3) chickenBarrage(b, 3 + Math.floor((level - 1) / 2));   // 각성: 구르고 나면 바로 생닭 폭격
+          if (b.phase3) chickenBarrage(b, 3 + Math.floor((level - 1) / 2));   // 각성: 던지고 나면 바로 생닭 폭격
         }
       }
       b.mesh.position.set(b.x, 0, b.z);
@@ -1076,10 +1382,8 @@ function update(dt) {
       b.rollCd -= dt;
       if (b.rollCd <= 0) {
         const lx = clamp(cx + (Math.random() * 2 - 1) * 0.8, -HALF + ROLL_W / 2, HALF - ROLL_W / 2);
-        const back = b.attached;   // 붙어 있으면 뒤로 물러났다가 굴러옴
-        b.attached = false;
-        b.roll = { ph: 'warn', t: 0, lx, back, z0: back ? front - 16 : b.z };
-        banner(b.phase3 ? '푸바오 각성 구르기!' : '푸바오 구르기!');
+        b.roll = { ph: 'warn', t: 0, lx };
+        banner(b.phase3 ? '푸바오 각성! 대나무 연타' : '푸바오 대나무 던지기!');
       }
     }
     if (!b.final) {
@@ -1102,7 +1406,7 @@ function update(dt) {
       }
       if (b.z >= front - b.reach) { b.dash = null; b.attached = true; }
     } else if (!b.attached) {
-      if (b.howl <= 0) b.z += b.speed * dt;
+      if (b.howl <= 0) b.z += b.speed * dt * sf;
       b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
       b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI * (i < 2 ? 1 : 0.5)) * 0.45);
       if (b.z >= front - b.reach) b.attached = true;
@@ -1354,15 +1658,69 @@ function loop(now) {
 }
 
 function start() {
-  document.getElementById('menu').hidden = true;
-  document.getElementById('result').hidden = true;
-  buildLevel(); state = 'run';
+  ['menu', 'hub', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
+  document.querySelector('.hud').hidden = false;
+  buildLevel(); resetSkills(); state = 'run';
 }
-document.getElementById('startBtn').addEventListener('click', () => { (document.fonts ? document.fonts.load('84px "Black Han Sans"') : Promise.resolve()).finally(start); });
+
+// ---------- 기지 (레벨 / 스킬) ----------
+let hubTab = 'lv', skSel = save.equip;
+function openHub() {
+  ['menu', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
+  if (state !== 'menu') { buildLevel(); state = 'menu'; }
+  document.getElementById('hub').hidden = false;
+  document.querySelector('.hud').hidden = true;
+  renderHub();
+}
+function renderHub() {
+  SKILLS.forEach(k => { if (unlocked(k) && !save.skills[k.id]) save.skills[k.id] = 1; });
+  document.getElementById('coinN').textContent = save.coins;
+  document.querySelectorAll('.tabs button').forEach(b => { const on = b.dataset.tab === hubTab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  document.getElementById('tabLv').hidden = hubTab !== 'lv';
+  document.getElementById('tabSk').hidden = hubTab !== 'sk';
+  // 레벨: 깬 레벨 + 다음 레벨까지 열림, 그 뒤 3개는 잠금으로 보여줌 (무한)
+  const open = save.maxClear + 1;
+  let h = '';
+  for (let n = 1; n <= open + 3; n++) {
+    if (n <= save.maxClear) h += `<button class="done" data-lv="${n}">LV ${n}<small>✓ 클리어</small></button>`;
+    else if (n === open) h += `<button class="next" data-lv="${n}">LV ${n}<small>도전!</small></button>`;
+    else h += `<button disabled>LV ${n}<small>🔒 잠김</small></button>`;
+  }
+  const grid = document.getElementById('lvGrid'); grid.innerHTML = h;
+  const nx = grid.querySelector('.next'); if (nx && hubTab === 'lv') nx.scrollIntoView({ block: 'nearest' });
+  // 스킬 목록
+  document.getElementById('skList').innerHTML = SKILLS.map(k => {
+    const lv = skillLv(k.id), ok = unlocked(k);
+    return `<button class="sk${ok ? '' : ' lock'}${k.id === skSel ? ' sel' : ''}${k.id === save.equip ? ' eq' : ''}" data-sk="${k.id}">` +
+      `<span class="ic">${ok ? k.icon : '🔒'}</span><span><b>${k.tiers[Math.max(0, lv - 1)].n}</b>` +
+      `<small>${ok ? `Lv.${lv}/5${k.id === save.equip ? ' · 장착 중' : ''}` : `LV ${k.unlock} 클리어 시 해금`}</small></span></button>`;
+  }).join('');
+  // 선택한 스킬 상세: 업그레이드 / 선택
+  const k = skillById(skSel), lv = skillLv(k.id), ok = unlocked(k);
+  const cur = k.tiers[Math.max(0, lv - 1)], nxt = lv < 5 ? k.tiers[lv] : null, cost = UP_COST[lv];
+  document.getElementById('skDetail').innerHTML =
+    `<h3>${ok ? k.icon : '🔒'} ${cur.n}</h3>` +
+    `<div class="lvpips" aria-label="레벨 ${lv}/5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</div>` +
+    `<p>${cur.d}</p>` + `<p>적 ${k.need}마리 처치마다 사용 가능 (보스 피해도 충전)</p>` +
+    (ok && nxt ? `<p class="nx">다음 Lv.${lv + 1}: <b>${nxt.n}</b> — ${nxt.d}</p>` : '') +
+    (ok ? `<div class="skbtns"><button class="gold" id="upBtn" ${!nxt || save.coins < cost ? 'disabled' : ''}>${nxt ? `업그레이드 🪙${cost}` : '최대 레벨'}</button>` +
+      `<button id="eqBtn" ${k.id === save.equip ? 'disabled' : ''}>${k.id === save.equip ? '장착 중' : '선택'}</button></div>`
+      : `<p>LV ${k.unlock}을 클리어하면 열립니다.</p>`);
+  const up = document.getElementById('upBtn'), eq = document.getElementById('eqBtn');
+  if (up) up.onclick = () => { if (save.coins < cost || !nxt) return; save.coins -= cost; save.skills[k.id] = lv + 1; persist(); renderHub(); };
+  if (eq) eq.onclick = () => { save.equip = k.id; persist(); renderHub(); };
+}
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { hubTab = b.dataset.tab; renderHub(); } });
+document.getElementById('lvGrid').addEventListener('click', e => { const b = e.target.closest('button[data-lv]'); if (b) { level = +b.dataset.lv; start(); } });
+document.getElementById('skList').addEventListener('click', e => { const b = e.target.closest('button[data-sk]'); if (b) { skSel = b.dataset.sk; renderHub(); } });
+
+document.getElementById('startBtn').addEventListener('click', () => { (document.fonts ? document.fonts.load('84px "Black Han Sans"') : Promise.resolve()).finally(openHub); });
 document.getElementById('nextBtn').addEventListener('click', () => { level++; start(); });
 document.getElementById('retryBtn').addEventListener('click', start);
+document.getElementById('hubBtn').addEventListener('click', openHub);
 
 buildLevel(); state = 'menu';
+document.querySelector('.hud').hidden = true;
 requestAnimationFrame(loop);
 })();
 </script>
