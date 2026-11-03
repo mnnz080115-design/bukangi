@@ -317,8 +317,8 @@ const pupFace = inst(merge([
 ]), phong(0xdfe3e6), MAX_PUP);
 const pupEye = inst(merge([[SPH, Mx(0.1, 0.9, 0.7, 0, 0, 0, 0.08)], [SPH, Mx(-0.1, 0.9, 0.7, 0, 0, 0, 0.08)]]), new THREE.MeshBasicMaterial({ color: 0xffd23f }), MAX_PUP);
 const PUP = new THREE.Color(0x5f6a74);
-function pupSet(i, x, y, z, s, lean) {
-  dummy.rotation.set(lean, 0, 0); dummy.scale.set(s, s, s); dummy.position.set(x, y, z); dummy.updateMatrix();
+function pupSet(i, x, y, z, s, lean, squash = 1) {
+  dummy.rotation.set(lean, 0, 0); dummy.scale.set(s * (2 - squash), s * squash, s); dummy.position.set(x, y, z); dummy.updateMatrix();
   pupBody.setMatrixAt(i, dummy.matrix); pupFace.setMatrixAt(i, dummy.matrix); pupEye.setMatrixAt(i, dummy.matrix);
 }
 
@@ -623,7 +623,7 @@ function spawnBoss(ev) {
   const { g, mat, eyeM, arms } = model;
   g.scale.setScalar(final ? 1.5 : 1.05); g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 3.2)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 5.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
     final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, armyStart: Math.max(1, pl.n), el: tag('boss') });
@@ -784,8 +784,8 @@ function wolfHowl(b) {
   }
   // 근처에 변할 졸개가 적으면 늑구가 직접 새끼를 부름
   const h = Math.max(1, strength(pl) * diff * 0.05);
-  for (let k = near.length; k < 4; k++)
-    makeZombie(9, h / FOE[9].hp, clamp(b.x + (k - 1.5) * 1.2, -HALF + 0.4, HALF - 0.4), b.z + 1.5);
+  for (let k = near.length; k < 3; k++)
+    makeZombie(9, h / FOE[9].hp, clamp(b.x + (k - 1) * 1.4, -HALF + 0.4, HALF - 0.4), b.z + 1.5);
 }
 
 // 늑구가 문 옆을 지날 때 좋은 쪽 문을 물어가서 나쁜 문으로 바꿈
@@ -872,7 +872,13 @@ function update(dt) {
       continue;
     }
     if (!zb.attached) {
-      zb.z += zb.speed * dt;
+      if (zb.type === 9) {
+        // 작은 늑구: 웅크렸다가(0.25초) 도약(0.45초)을 반복하며 달려듦
+        zb.lp = (zb.lp ?? Math.random() * 0.7) + dt;
+        const ph = zb.lp % 0.7;
+        if (ph < 0.25) { zb.hop = 0; zb.crouch = Math.sin(ph / 0.25 * Math.PI); zb.z += zb.speed * 0.15 * dt; }
+        else { const q = (ph - 0.25) / 0.45; zb.hop = Math.sin(q * Math.PI) * 1.3; zb.crouch = 0; zb.pitch = (q - 0.5) * 0.9; zb.z += zb.speed * 1.47 * dt; }
+      } else zb.z += zb.speed * dt;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
       if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : zb.type === 9 ? 7 : 2.4) * dt, Math.abs(cx - zb.x));
       zb.x = clamp(zb.x, -HALF + 0.3, HALF - 0.3);
@@ -958,7 +964,7 @@ function update(dt) {
       if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : 0.025)))); }
     }
     if (!b.final && state === 'run') {
-      if (b.z > -55) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 6.5 / lvFoeAtk(); wolfHowl(b); } }
+      if (b.z > -55) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 3 / lvFoeAtk(); wolfHowl(b); } }
       for (const g of gates) if (!g.used && !g.bitten && Math.abs(g.z - b.z) < 1.5) wolfBite(b, g);
     }
     if (b.final && state === 'run' && b.z > -36) {
@@ -1089,8 +1095,9 @@ function draw(t) {
     }
     if (zb.type === 9) {
       if (np < MAX_PUP) {
-        const bob = zb.dead ? 0 : Math.abs(Math.sin(t * 16 + zb.ph)) * 0.18;
-        pupSet(np, zb.x, bob, zb.z, 1.1 * sy, zb.attached ? 0.3 + Math.abs(Math.sin(t * 12 + zb.ph)) * 0.3 : 0);
+        const air = zb.dead || zb.attached ? 0 : (zb.hop || 0);
+        const lean = zb.attached ? 0.3 + Math.abs(Math.sin(t * 12 + zb.ph)) * 0.3 : air > 0 ? (zb.pitch || 0) : 0;
+        pupSet(np, zb.x, air, zb.z, 1.1 * sy, lean, 1 - (zb.dead || zb.attached ? 0 : (zb.crouch || 0)) * 0.3);
         pupBody.setColorAt(np, tmpB.copy(PUP).lerp(WHITE, zb.flash * 0.7));
         np++;
       }
