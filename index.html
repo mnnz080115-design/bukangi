@@ -60,6 +60,7 @@ body{background:var(--sky);color:var(--ink);font-family:var(--font-b);overflow:h
 .tag.army{background:var(--army)}
 .tag.boss{background:var(--foe);font-size:24px;padding:4px 14px}
 .tag.boss.rage{background:#7a0f12}
+.tag.boss.awake{background:linear-gradient(90deg,#7a0f12,#d4a017);box-shadow:0 0 14px #ffd54a}
 .tag.boss.mid{font-size:16px;padding:2px 10px;background:#4a525b}
 .pop{position:absolute;font-family:var(--font-d);font-size:34px;white-space:nowrap;-webkit-text-stroke:2px var(--ink);paint-order:stroke;animation:pop .9s ease-out forwards}
 @keyframes pop{from{opacity:1;translate:-50% 0}to{opacity:0;translate:-50% -70px}}
@@ -111,7 +112,7 @@ button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
       <div><i style="background:#ff6b8a"></i><span><b>치료병</b> 뒤에서 주변을 회복</span></div>
       <div><i style="background:#6b4226"></i><span><b>문 파괴범</b> 문 숫자를 깎음</span></div>
       <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 중간늑구를 부르고 문을 물어뜯음</span></div>
-      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 생닭을 계속 보냄</span></div>
+      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 구르기·생닭 폭격, 체력 25%에서 각성</span></div>
     </div>
     <p style="font-size:12.5px">PC: ← → 또는 A D · 모바일: 화면 드래그</p>
     <button id="startBtn">출발</button>
@@ -146,6 +147,8 @@ const SCROLL = 6, ZOMBIE_SPEED = 6.5, BOSS_SPEED = 2.4, SPAWN_Z = -75, RANGE = 4
 const FOE_HP = 1;
 // 레벨이 오를수록 적도 강해짐 (우리 팀 레벨 보너스보다 조금 더 빠르게)
 const lvFoeHp = () => 1 + 0.32 * (level - 1);
+const lvBossHp = () => 1 + 0.2 * (level - 1);                    // 보스(늑구·푸바오) 추가 체력 배율
+const wolfCount = () => Math.min(4, 1 + Math.floor(level / 2));   // 레벨별 늑구 마리 수: 1,2,2,3,3,4
 const lvFoeSpd = () => Math.min(1.4, 1 + 0.05 * (level - 1));
 const lvFoeAtk = () => 1 + 0.15 * (level - 1);   // 적 전체 체력 배율
 const ADD_COST = 3, PCT_COST = 5;
@@ -401,6 +404,17 @@ for (let i = 0; i < 12; i++) {
   rocks.push({ m, ring, active: false });
 }
 const ROCK_R = 1.8, BOMB_R = 3.0;
+// 푸바오 구르기 경고 줄
+const ROLL_W = 3.4;
+const rollStripe = new THREE.Mesh(new THREE.PlaneGeometry(ROLL_W, 1), new THREE.MeshBasicMaterial({ color: 0xff2d2d, transparent: true, opacity: 0.4, depthWrite: false }));
+rollStripe.rotation.x = -Math.PI / 2; rollStripe.visible = false; scene.add(rollStripe);
+// 생닭 폭격: 하늘로 던진 생닭 + 낙하 지점 표시
+const CB_R = 2.4, cbombs = [];
+for (let i = 0; i < 24; i++) {
+  const ring = new THREE.Mesh(new THREE.RingGeometry(CB_R - 0.3, CB_R, 32), new THREE.MeshBasicMaterial({ color: 0xff7a1a, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.visible = false; scene.add(ring);
+  cbombs.push({ ring, active: false });
+}
 
 const SP = 0.42, GA = 2.39996;
 const offs = [];
@@ -487,8 +501,8 @@ const postMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
 
 let gunScale = { sx: 1, sy: 1, sz: 0.6 };
 // 레벨이 오를수록 우리 부대가 강해짐
-const lvAtk = () => 1 + 0.25 * (level - 1);
-const lvDef = () => Math.max(0.5, 1 - 0.08 * (level - 1));
+const lvAtk = () => 1 + 0.35 * (level - 1);
+const lvDef = () => Math.max(0.45, 1 - 0.1 * (level - 1));
 function updateHud() {
   const w = WEAPONS[pl.tier];
   document.getElementById('wp').innerHTML =
@@ -528,6 +542,7 @@ function clearLevel() {
   }
   bosses.forEach(b => b.el.remove()); mids.forEach(m => m.el.remove()); mids = [];
   rocks.forEach(r => { r.active = false; r.m.visible = r.ring.visible = false; });
+  cbombs.forEach(c => { c.active = false; c.ring.visible = false; }); rollStripe.visible = false;
   labels.querySelectorAll('.pop').forEach(e => e.remove());
 }
 
@@ -535,7 +550,7 @@ function buildLevel() {
   clearLevel();
   levelGroup = new THREE.Group(); scene.add(levelGroup);
   gates = []; zombies = []; bullets = []; ebullets = []; events = []; bosses = []; waves = [];
-  pl = { n: 20 + level * 2, tier: 0, rate: 1, pow: 1 };
+  pl = { n: 20 + level * 4, tier: 0, rate: 1, pow: 1 };
   diff = diffStart; lost = 0;
   let s = { ...pl };
   const SECTIONS = 6;
@@ -554,7 +569,8 @@ function buildLevel() {
     const a = applyTo(s, ops[0]), b = applyTo(s, ops[1]);
     s = strength(a) >= strength(b) ? a : b;
   }
-  events.push({ t: 26, kind: 'boss', final: false });
+  const nw = wolfCount();
+  for (let i = 0; i < nw; i++) events.push({ t: nw === 1 ? 26 : 18 + i * 10, kind: 'boss', final: false, solo: nw === 1 });
   const bt = 1 + SECTIONS * 10 + 1;
   events.push({ t: bt, kind: 'boss', final: true });
   events.sort((p, q) => p.t - q.t);
@@ -631,14 +647,22 @@ function spawnGate(ev) {
 function spawnBoss(ev) {
   const final = ev.final, sc = final ? 1.5 : 0.65;
   const model = final ? buildPanda() : buildWolf();
-  const { g, mat, eyeM, arms } = model;
-  g.scale.setScalar(final ? 1.5 : 1.05); g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
+  const { g: body, mat, eyeM, arms } = model;
+  body.scale.setScalar(final ? 1.5 : 1.05);
+  let g = body, pivot = null;
+  if (final) {
+    // 구르기 때 몸 중심으로 돌도록: 바깥 그룹 → 피벗(몸 중심 높이) → 몸
+    g = new THREE.Group(); pivot = new THREE.Group(); pivot.position.y = 3.1; body.position.y = -3.1;
+    pivot.add(body); g.add(pivot);
+  }
+  g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 5.5)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 6.8 : ev.solo ? 5.5 : 4.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
-    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, armyStart: Math.max(1, pl.n), el: tag('boss') });
-  banner(final ? '푸바오 등장! 생닭 주의' : '늑구 등장!');
+    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, armyStart: Math.max(1, pl.n), el: tag('boss') });
+  const wi = bosses.filter(o => !o.final).length;
+  banner(final ? '푸바오 등장! 생닭 주의' : wolfCount() > 1 ? `늑구 ${wi}/${wolfCount()} 등장!` : '늑구 등장!');
 }
 
 function spawn(ev) {
@@ -825,6 +849,18 @@ function wolfBite(b, g, k) {
   shake = Math.max(shake, 0.35); hitFlash = Math.max(hitFlash, 0.08);
 }
 
+function chickenBarrage(b, n) {
+  const vis = Math.min(pl.n, MAX_ARMY); if (!vis) return;
+  for (let k = 0; k < n; k++) {
+    const c = cbombs.find(c => !c.active); if (!c) return;
+    const [sx, sz] = soldierPos(Math.floor(Math.random() * vis));
+    const tx = clamp(sx + (Math.random() * 2 - 1) * 1.2, -HALF + 0.5, HALF - 0.5), tz = sz + (Math.random() * 2 - 1) * 0.8;
+    Object.assign(c, { active: true, sx: b.x + (Math.random() * 2 - 1), sy: 5 * b.sc, sz: b.z + 1, tx, tz, t: -k * 0.12, T: 1.35, spin: Math.random() * 6 });
+    c.ring.position.set(tx, 0.04, tz); c.ring.visible = true;
+  }
+  banner('생닭 폭격!');
+}
+
 function throwRock(b) {
   const r = rocks.find(r => !r.active); if (!r || !pl.n) return;
   const [tx, tz] = soldierPos(Math.floor(Math.random() * Math.min(pl.n, MAX_ARMY)));
@@ -945,6 +981,18 @@ function update(dt) {
   ebullets = ebullets.filter(e => e.life > 0);
 
   // 돌
+  for (const c of cbombs) {
+    if (!c.active) continue;
+    c.t += dt;
+    c.ring.material.opacity = 0.45 + 0.4 * Math.abs(Math.sin(c.t * 14));
+    if (c.t < c.T) continue;
+    c.active = false; c.ring.visible = false;
+    if (state !== 'run') continue;
+    const vis = Math.min(pl.n, MAX_ARMY); let n = 0;
+    for (let i = 0; i < vis; i++) { const [x, z] = soldierPos(i); if (Math.hypot(x - c.tx, z - c.tz) < CB_R) n++; }
+    if (n) killSoldiers(Math.min(n * (pl.n / Math.max(1, vis)), Math.max(2, pl.n * 0.1)));
+    boom(c.tx, c.tz, CB_R + 0.3, 0xff6a2a); shake = Math.max(shake, 0.35);
+  }
   for (const rk of rocks) {
     if (!rk.active) continue;
     rk.t += dt; const p = Math.min(1, rk.t / rk.T);
@@ -969,12 +1017,70 @@ function update(dt) {
       b.mesh.rotation.set(0, 0, Math.min(Math.PI / 2, b.dead * 4));   // 옆으로 쓰러짐
       b.mesh.position.set(b.x, -Math.max(0, b.dead - 0.6) * 1.5, b.z); // 쓰러진 뒤 물에 가라앉음
       b.mesh.visible = b.dead < 3 && b.z < 18;
+      if (b.final) rollStripe.visible = false;
       b.el.hidden = true; continue;
     }
     if (b.final && !b.phase2 && b.hp < b.max * 0.5) {
       b.phase2 = true; b.speed *= 1.8; b.summonCd = 0.3;
       b.eyeM.color.set(0xff2020); b.base.set(0xf2b4aa); b.el.classList.add('rage');
       banner('푸바오 분노!');
+    }
+    if (b.final && !b.phase3 && b.hp < b.max * 0.25) {
+      b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2;
+      b.eyeM.color.set(0xffee55); b.base.set(0xffd9a8); b.el.classList.add('awake');
+      boom(b.x, b.z, 7, 0xffd54a, 3, 0.6); shake = Math.max(shake, 0.5);
+      banner('푸바오 각성!');
+    }
+    // 푸바오 구르기: 경고 → 몸을 말아 한 줄로 굴러옴 → 부대 앞에서 멈춤
+    if (b.final && b.roll && state === 'run') {
+      const Rl = b.roll; Rl.t += dt;
+      if (Rl.ph === 'warn') {
+        const q = Math.min(1, Rl.t / 1.1);
+        b.x += (Rl.lx - b.x) * Math.min(1, dt * 8);
+        if (Rl.back) b.z += (Rl.z0 - b.z) * Math.min(1, dt * 6);
+        b.pivot.scale.set(1 + 0.15 * q, 1 - 0.25 * q, 1 + 0.15 * q);
+        b.pivot.rotation.x = 0.6 * q;
+        const z1 = b.z + 2, z2 = front + 3, len = Math.max(1, z2 - z1);
+        rollStripe.visible = true; rollStripe.scale.set(1, len, 1); rollStripe.position.set(Rl.lx, 0.05, (z1 + z2) / 2);
+        rollStripe.material.opacity = 0.25 + 0.35 * Math.abs(Math.sin(Rl.t * 12));
+        if (Rl.t >= 1.1) { Rl.ph = 'roll'; Rl.t = 0; Rl.zs = b.z; Rl.hit = false; }
+      } else if (Rl.ph === 'roll') {
+        const q = Math.min(1, Rl.t / 0.55), zEnd = front - b.reach * 0.6;
+        b.z = Rl.zs + (zEnd - Rl.zs) * q * q; b.x = Rl.lx;
+        b.pivot.rotation.x += dt * 22; b.pivot.scale.set(1.15, 0.75, 1.15);
+        rollStripe.material.opacity = 0.6;
+        if (!Rl.hit && b.z >= front - b.reach - 1) {
+          Rl.hit = true;
+          const vis = Math.min(pl.n, MAX_ARMY); let c = 0;
+          for (let i = 0; i < vis; i++) if (Math.abs(soldierPos(i)[0] - Rl.lx) < ROLL_W / 2 + 0.3) c++;
+          if (c) killSoldiers(Math.min(c * (pl.n / Math.max(1, vis)) * 0.9, pl.n * 0.45));
+          boom(Rl.lx, front, 3, 0xefeadf, 1.2, 0.35); shake = Math.max(shake, 0.6); hitFlash = 0.12;
+        }
+        if (q >= 1) { Rl.ph = 'rec'; Rl.t = 0; rollStripe.visible = false; }
+      } else {
+        const q = Math.min(1, Rl.t / 0.5);
+        b.pivot.rotation.x *= 1 - Math.min(1, dt * 10); b.pivot.scale.set(1.15 - 0.15 * q, 0.75 + 0.25 * q, 1.15 - 0.15 * q);
+        b.z = front - b.reach; b.attached = true;
+        if (q >= 1) {
+          b.pivot.rotation.x = 0; b.pivot.scale.set(1, 1, 1); b.roll = null;
+          b.rollCd = (b.phase3 ? 3.5 : b.phase2 ? 5.5 : 7.5) / lvFoeAtk();
+          if (b.phase3) chickenBarrage(b, 3 + Math.floor((level - 1) / 2));   // 각성: 구르고 나면 바로 생닭 폭격
+        }
+      }
+      b.mesh.position.set(b.x, 0, b.z);
+      b.flash = Math.max(0, b.flash - dt * 6);
+      b.mat.color.copy(b.base).lerp(b.flashCol, b.flash * 0.6);
+      continue;
+    }
+    if (b.final && state === 'run' && b.z > -40) {
+      b.rollCd -= dt;
+      if (b.rollCd <= 0) {
+        const lx = clamp(cx + (Math.random() * 2 - 1) * 0.8, -HALF + ROLL_W / 2, HALF - ROLL_W / 2);
+        const back = b.attached;   // 붙어 있으면 뒤로 물러났다가 굴러옴
+        b.attached = false;
+        b.roll = { ph: 'warn', t: 0, lx, back, z0: back ? front - 16 : b.z };
+        banner(b.phase3 ? '푸바오 각성 구르기!' : '푸바오 구르기!');
+      }
     }
     if (!b.final) {
       b.howl = Math.max(0, b.howl - dt);
@@ -1019,7 +1125,7 @@ function update(dt) {
     }
     if (b.final && state === 'run' && b.z > -36) {
       b.throwCd -= dt;
-      if (b.throwCd <= 0) { b.throwCd = (b.final ? (b.phase2 ? 1.6 : 3) : 4) / lvFoeAtk(); throwRock(b); if (b.phase2) setTimeout(() => state === 'run' && !b.dead && throwRock(b), 350); }
+      if (b.throwCd <= 0) { b.throwCd = (b.phase3 ? 1.2 : b.phase2 ? 1.6 : 3) / lvFoeAtk(); throwRock(b); if (b.phase2) setTimeout(() => state === 'run' && !b.dead && throwRock(b), 350); }
     }
     if (b.phase2 && state === 'run') {
       b.summonCd -= dt;
@@ -1046,11 +1152,14 @@ function update(dt) {
       if (b.z > -62) {
         b.bombCd -= dt;
         if (b.bombCd <= 0) {
-          b.bombCd = (b.phase2 ? 1.8 : 3) / lvFoeAtk();
-          const h = Math.max(1, strength(pl) * diff * 0.04);
-          for (let k = 0; k < (b.phase2 ? 3 : 2) + Math.floor((level - 1) / 2); k++)
-            makeZombie(3, h, clamp(b.x + (Math.random() * 2 - 1) * 2.5, -HALF + 0.4, HALF - 0.4), b.z + 1.5, { cap: 0.12 });
-          boom(b.x, b.z + 1.5, 1.4, 0xff6a2a, 1.5, 0.25);
+          b.bombCd = (b.phase3 ? 2.6 : b.phase2 ? 3 : 3) / lvFoeAtk();
+          if (b.phase2) chickenBarrage(b, 3 + Math.floor((level - 1) / 2) + (b.phase3 ? 2 : 0));
+          else {
+            const h = Math.max(1, strength(pl) * diff * 0.04);
+            for (let k = 0; k < (b.phase2 ? 3 : 2) + Math.floor((level - 1) / 2); k++)
+              makeZombie(3, h, clamp(b.x + (Math.random() * 2 - 1) * 2.5, -HALF + 0.4, HALF - 0.4), b.z + 1.5, { cap: 0.12 });
+            boom(b.x, b.z + 1.5, 1.4, 0xff6a2a, 1.5, 0.25);
+          }
         }
       }
     }
@@ -1177,6 +1286,13 @@ function draw(t) {
     }
   }
   zombieMesh.commit(n);
+  for (const c of cbombs) {
+    if (!c.active || c.t < 0 || nch >= MAX_CH) continue;
+    const p = Math.min(1, c.t / c.T);
+    chickenSet(nch, c.sx + (c.tx - c.sx) * p, c.sy + (0.3 - c.sy) * p + Math.sin(Math.PI * p) * 8, c.sz + (c.tz - c.sz) * p, 0.95, c.spin + c.t * 9);
+    chickMeat.setColorAt(nch, tmpB.copy(CHICK).lerp(CHICK_HOT, 0.4 + 0.4 * Math.abs(Math.sin(c.t * 18))));
+    nch++;
+  }
   chickMeat.count = chickBone.count = nch; chickMeat.instanceMatrix.needsUpdate = chickBone.instanceMatrix.needsUpdate = true; chickMeat.instanceColor.needsUpdate = true;
   pupBody.count = pupFace.count = pupEye.count = np;
   pupBody.instanceMatrix.needsUpdate = pupFace.instanceMatrix.needsUpdate = pupEye.instanceMatrix.needsUpdate = true;
