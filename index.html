@@ -151,14 +151,14 @@ const ADD_COST = 3, PCT_COST = 5;
 const WEAPONS = [
   { name: '권총',    rate: 0.6,  power: 1,   speed: 48, size: 1.0, color: 0xffd23f, splash: 0,   vis: 70, gun: [1, 1, 0.6] },
   { name: '기관총',  rate: 1.8,  power: 0.8, speed: 62, size: 0.8, color: 0xfff08a, splash: 0,   vis: 90, gun: [1, 1.2, 1.4] },
-  { name: '바주카포', rate: 0.42, power: 7,   speed: 44, size: 2.6, color: 0xff7a1a, splash: 2.8, vis: 26, gun: [2.4, 2.4, 1.7] },
+  { name: '바주카포', rate: 0.35, power: 6,   speed: 30, size: 2.6, color: 0xff7a1a, splash: 2.1, vis: 26, gun: [2.4, 2.4, 1.7] },
 ];
 // 적 종류: 0좀비 1장갑 2사수 3자폭 4방패 5분열 6꼬마 7치료 8문파괴
 const FOE = [
   { hp: 1,   speed: 1,    scale: 1,    body: 0x7a8f5c, head: 0x9fbf7a },
   { hp: 4,   speed: 0.72, scale: 1.25, body: 0x59636e, head: 0x8a939c },
   { hp: 2,   speed: 0.9,  scale: 1,    body: 0x7b3fa0, head: 0x9fbf7a },
-  { hp: 1.5, speed: 9.5,  scale: 0.9,  body: 0xf0642a, head: 0xffd23f },
+  { hp: 1.5, speed: 12,   scale: 0.9,  body: 0xf0642a, head: 0xffd23f },
   { hp: 3,   speed: 0.85, scale: 1.1,  body: 0x3d5a80, head: 0x9fbf7a },
   { hp: 3,   speed: 0.85, scale: 1.35, body: 0xa4b83a, head: 0xd4e157 },
   { hp: 0.5, speed: 1.3,  scale: 0.6,  body: 0xa4b83a, head: 0xd4e157 },
@@ -407,7 +407,7 @@ const armyTag = tag('army');
 
 // ---------- 플레이어 상태와 문 ----------
 let pl = { n: 0, tier: 0, rate: 1, pow: 1 };
-const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 0.9 : 1); };
+const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 1.6 : 1); };
 const strength = s => Math.max(1, s.n) * dpsPer(s);
 function applyTo(s, op) {
   const r = { ...s };
@@ -600,7 +600,7 @@ function spawnBoss(ev) {
   const { g, mat, eyeM, arms } = model;
   g.scale.setScalar(final ? 1.5 : 1.05); g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 5.5)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 3.2)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
     final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, armyStart: Math.max(1, pl.n), el: tag('boss') });
@@ -809,7 +809,7 @@ function update(dt) {
     if (!zb.attached) {
       zb.z += zb.speed * dt;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
-      if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 24 : 2.4) * dt, Math.abs(cx - zb.x));
+      if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 32 : 2.4) * dt, Math.abs(cx - zb.x));
       zb.x = clamp(zb.x, -HALF + 0.3, HALF - 0.3);
       if (zb.z >= front && Math.abs(zb.x - cx) < r + 1.2) {
         if (zb.type === 3) { zb.z = front; explodeOnArmy(zb); continue; }
@@ -885,11 +885,11 @@ function update(dt) {
     } else if (state === 'run') {
       b.z = front - b.reach; b.atk += dt;
       b.arms.forEach((a, i) => a.rotation.x = -Math.abs(Math.sin(b.atk * 8 + i)) * 1.2);
-      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : (b.hp < b.max * 0.4 ? 0.05 : 0.035))))); }
+      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : 0.025)))); }
     }
     if (state === 'run' && b.z > -36) {
       b.throwCd -= dt;
-      if (b.throwCd <= 0) { b.throwCd = (b.final ? (b.phase2 ? 1.6 : 3) : (b.hp < b.max * 0.4 ? 1.6 : 2.6)) / lvFoeAtk(); throwRock(b); if (b.phase2 || (!b.final && b.hp < b.max * 0.4)) setTimeout(() => state === 'run' && !b.dead && throwRock(b), 350); }
+      if (b.throwCd <= 0) { b.throwCd = (b.final ? (b.phase2 ? 1.6 : 3) : 4) / lvFoeAtk(); throwRock(b); if (b.phase2) setTimeout(() => state === 'run' && !b.dead && throwRock(b), 350); }
     }
     if (b.phase2 && state === 'run') {
       b.summonCd -= dt;
@@ -936,11 +936,6 @@ function update(dt) {
     let tx = null, tz, ty = 0.8;
     if (tg && tg.gt) { if (!tg.gt.used) { tx = tg.k ? HALF / 2 : -HALF / 2; tz = tg.gt.z; ty = 1.6; } }
     else if (tg && !tg.dead) { tx = tg.x; tz = tg.z; ty = tg.final !== undefined ? 2.5 * tg.sc : 0.8; }
-    if (tx === null && tg && !tg.gt && tg.dead) {
-      // 목표가 이미 죽었으면 다른 적으로 갈아탐 (바주카 폭발로 먼저 죽는 경우 등)
-      const nt = pickTarget();
-      if (nt) { bl.target = nt; if (!nt.gt) nt.incoming += bl.dmg; continue; }
-    }
     if (tx === null) { bl.z -= bl.w.speed * dt; continue; }
     const dx = tx - bl.x, dy = ty - bl.y, dz = tz - bl.z, d = Math.hypot(dx, dy, dz), step = bl.w.speed * dt;
     if (d > step + 0.3) { bl.x += dx / d * step; bl.y += dy / d * step; bl.z += dz / d * step; continue; }
@@ -958,7 +953,7 @@ function update(dt) {
       hurt(tg, dmg);
       if (bl.w.splash) {
         boom(tx, tz, bl.w.splash);
-        for (const zb of zombies) if (zb !== tg && !zb.dead && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg);
+        for (const zb of zombies) if (zb !== tg && !zb.dead && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg * 0.7);
       }
     }
   }
