@@ -172,7 +172,7 @@ details.howto[open]{display:grid;gap:10px}
       <div><i style="background:#ff6b8a"></i><span><b>치료병</b> 뒤에서 주변을 회복</span></div>
       <div><i style="background:#6b4226"></i><span><b>문 파괴범</b> 문 숫자를 깎음</span></div>
       <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 중간늑구를 부르고 문을 물어뜯음</span></div>
-      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 분신술(루이바오·후이바오)·대나무 던지기·생닭 폭격, 체력 25%에서 각성</span></div>
+      <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 대나무 던지기·생닭 폭격·소환(루이바오·후이바오·아이바오). 소환수까지 모두 쓰러뜨려야 승리</span></div>
     </div>
     <p style="font-size:12.5px">PC: ← → 또는 A D, 스킬은 스페이스 · 모바일: 화면 드래그, 스킬은 오른쪽 아래 버튼</p>
     </details>
@@ -502,6 +502,10 @@ const ROCK_R = 1.8, BOMB_R = 3.0;
 const ROLL_W = 3.4, BAMBOO_END = 9;   // 대나무는 부대 뒤쪽(z=9)까지 굴러감
 const rollStripe = new THREE.Mesh(new THREE.PlaneGeometry(ROLL_W, 1), new THREE.MeshBasicMaterial({ color: 0xff2d2d, transparent: true, opacity: 0.4, depthWrite: false }));
 rollStripe.rotation.x = -Math.PI / 2; rollStripe.visible = false; scene.add(rollStripe);
+// 아이바오 구르기 경고 줄 (보라빛)
+const AI_W = 3.6;
+const aiStripe = new THREE.Mesh(new THREE.PlaneGeometry(AI_W, 1), new THREE.MeshBasicMaterial({ color: 0x9b30ff, transparent: true, opacity: 0.4, depthWrite: false }));
+aiStripe.rotation.x = -Math.PI / 2; aiStripe.visible = false; scene.add(aiStripe);
 // 푸바오가 던지는 대나무 (클래시 통나무처럼 한 줄을 굴러옴)
 const bamboo = new THREE.Group();
 {
@@ -650,7 +654,7 @@ function clearLevel() {
   }
   bosses.forEach(b => b.el.remove()); mids.forEach(m => m.el.remove()); mids = [];
   rocks.forEach(r => { r.active = false; r.m.visible = r.ring.visible = false; });
-  cbombs.forEach(c => { c.active = false; c.ring.visible = false; }); rollStripe.visible = false; bamboo.visible = false;
+  cbombs.forEach(c => { c.active = false; c.ring.visible = false; }); rollStripe.visible = false; bamboo.visible = false; aiStripe.visible = false;
   labels.querySelectorAll('.pop').forEach(e => e.remove());
 }
 
@@ -775,19 +779,37 @@ function spawnBoss(ev) {
   banner(final ? '푸바오 등장! 생닭 주의' : wolfCount() > 1 ? `늑구 ${wi}/${wolfCount()} 등장!` : '늑구 등장!');
 }
 
-// 푸바오 분신(루이바오·후이바오·아이바오): 푸바오 최대 체력의 60% (늑구의 중간늑구는 50%)
-const CLONE_NAMES = ['루이바오', '후이바오', '아이바오'];
-function spawnClone(p) {
-  const used = bosses.filter(o => o.clone && o.owner === p && !o.dead).map(o => o.name);
-  const name = CLONE_NAMES.find(n => !used.includes(n)) || CLONE_NAMES[0];
-  const model = buildPanda(), { g, mat, eyeM, arms } = model;
-  const x = clamp(p.x + (Math.random() < 0.5 ? -1 : 1) * (1.8 + Math.random() * 1.2), -HALF + 1.2, HALF - 1.2), z = p.z + 2.5;
-  g.scale.setScalar(1.0); g.position.set(x, 0, z); levelGroup.add(g);
-  mat.color.set(0xcdb8ff); eyeM.color.set(0xff3a3a);
-  const hp = Math.max(20, Math.round(p.max * 0.6));
-  bosses.push({ x, z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach, flashCol: model.flashCol, mat, eyeM, base: mat.color.clone(),
-    flash: 0, dead: 0, final: false, clone: true, name, owner: p, sc: 1.0, speed: BOSS_SPEED * 1.7 * lvFoeSpd(), el: tag('boss mid') });
-  boom(x, z, 2.6, 0xcdb8ff, 2, 0.45);
+// 푸바오 소환수
+//  루이바오·후이바오: 둘이 한 번에 나옴. 멀찍이 멈춰 서서 생닭을 던짐. 체력은 각각 푸바오의 60%
+//  아이바오: 푸바오가 분노할 때 한 번 등장. 역대급 체력(푸바오의 120%). 한 줄을 천천히 굴러오며 깔린 부캉이는 100% 사망
+const SUMMON = {
+  rui: { name: '루이바오', hp: 0.6, scale: 0.85, tint: 0xffe3ec },
+  hui: { name: '후이바오', hp: 0.6, scale: 0.85, tint: 0xe3eeff },
+  ai:  { name: '아이바오', hp: 1.2, scale: 1.25, tint: null },
+};
+function spawnSummon(p, kind, x) {
+  const S = SUMMON[kind], model = buildPanda(), { g: body, mat, eyeM, arms } = model;
+  body.scale.setScalar(S.scale);
+  const g = new THREE.Group(), pivot = new THREE.Group();   // 구르기용 피벗 (몸 중심)
+  const c = 2.1 * S.scale; pivot.position.y = c; body.position.y = -c; pivot.add(body); g.add(pivot);
+  const z = p.z + 3; g.position.set(x, 0, z); levelGroup.add(g);
+  if (S.tint) mat.color.set(S.tint);
+  const hp = Math.max(20, Math.round(p.max * S.hp));
+  const b = { x, z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, pivot, arms, walk: model.walk, reach: model.reach * S.scale / 1.0, flashCol: model.flashCol, mat, eyeM, base: mat.color.clone(),
+    flash: 0, dead: 0, final: false, summon: kind, name: S.name, owner: p, sc: S.scale, howl: 0, speed: BOSS_SPEED * 1.7 * lvFoeSpd(), el: tag('boss mid'),
+    stopZ: kind === 'ai' ? 0 : -20 - Math.random() * 4, throwC: 1.5 + Math.random(), ai: kind === 'ai' ? { ph: 'enter', t: 0 } : null };
+  bosses.push(b);
+  boom(x, z, 2.8, 0xefeadf, 2, 0.45);
+  return b;
+}
+const summonsAlive = () => bosses.filter(o => o.summon && !o.dead);
+// 승리: 푸바오와 푸바오가 소환한 것까지 모두 쓰러져야 끝
+function checkWin(tg) {
+  const f = bosses.find(o => o.final);
+  if (!f || !f.dead || state !== 'run') return;
+  const left = summonsAlive();
+  if (!left.length) finish(true);
+  else if (tg === f) banner('푸바오 쓰러짐! ' + left.map(o => o.name).join('·') + ' 남음');
 }
 
 function spawn(ev) {
@@ -843,10 +865,10 @@ function fire(dt) {
   }
 }
 
-function killSoldiers(n) {
+function killSoldiers(n, pierce) {
   if (state !== 'run' || n <= 0) return;
   if (shieldT > 0) { if (Math.random() < 0.2) popText('막음!', cx, 2.2, 0, '#7fe3ff'); return; }
-  n *= lvDef() * statDef();
+  if (!pierce) n *= lvDef() * statDef();   // pierce: 아이바오처럼 방어력 무시
   n = Math.min(pl.n, Math.floor(n) + (Math.random() < n % 1 ? 1 : 0));
   pl.n -= n; lost += n; shake = 0.15; hitFlash = 0.15;
   if (pl.n <= 0) finish(false);
@@ -859,7 +881,7 @@ function hurt(tg, dmg) {
   if (tg.hp > 0) return;
   tg.dead = 0.001;
   if (tg.final !== undefined) {           // 보스
-    if (tg.final && state === 'run') finish(true);
+    if (tg.final || tg.summon) checkWin(tg);
     return;
   }
   if (tg.type === 5) {                    // 분열
@@ -972,7 +994,7 @@ function wolfBite(b, g, k) {
   shake = Math.max(shake, 0.35); hitFlash = Math.max(hitFlash, 0.08);
 }
 
-function chickenBarrage(b, n) {
+function chickenBarrage(b, n, quiet) {
   const vis = Math.min(pl.n, MAX_ARMY); if (!vis) return;
   const vol = { cap: Math.max(2, pl.n * 0.25), used: 0 };   // 한 번의 폭격으로 최대 25%까지만
   for (let k = 0; k < n; k++) {
@@ -982,7 +1004,7 @@ function chickenBarrage(b, n) {
     Object.assign(c, { active: true, sx: b.x + (Math.random() * 2 - 1), sy: 5 * b.sc, sz: b.z + 1, tx, tz, t: -k * 0.12, T: 1.35, spin: Math.random() * 6, vol });
     c.ring.position.set(tx, 0.04, tz); c.ring.visible = true;
   }
-  banner('생닭 폭격!');
+  if (!quiet) banner('생닭 폭격!');
 }
 
 function throwRock(b) {
@@ -1432,12 +1454,14 @@ function update(dt) {
       b.mesh.position.set(b.x, -Math.max(0, b.dead - 0.6) * 1.5, b.z); // 쓰러진 뒤 물에 가라앉음
       b.mesh.visible = b.dead < 3 && b.z < 18;
       if (b.final) { rollStripe.visible = false; bamboo.visible = false; }
+      if (b.summon === 'ai') aiStripe.visible = false;
       b.el.hidden = true; continue;
     }
     if (b.final && !b.phase2 && b.hp < b.max * 0.5) {
       b.phase2 = true; b.speed *= 1.8; b.summonCd = 0.3;
       b.eyeM.color.set(0xff2020); b.base.set(0xf2b4aa); b.el.classList.add('rage');
-      banner('푸바오 분노!');
+      banner('푸바오 분노! 아이바오 소환');
+      spawnSummon(b, 'ai', b.x);
     }
     if (b.final && !b.phase3 && b.hp < b.max * 0.25) {
       b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2;
@@ -1445,14 +1469,49 @@ function update(dt) {
       boom(b.x, b.z, 7, 0xffd54a, 3, 0.6); shake = Math.max(shake, 0.5);
       banner('푸바오 각성!');
     }
-    // 푸바오 분신술: 9초마다(레벨 오를수록 빨라짐) 분신 소환. 평소 1마리, 분노 2마리, 동시에 최대 2마리(각성 3마리)
+    // 루이바오·후이바오: 멈춰 서서 생닭 2마리씩 던짐
+    if ((b.summon === 'rui' || b.summon === 'hui') && state === 'run' && b.z > -45) {
+      b.throwC -= dt;
+      if (b.throwC <= 0) { b.throwC = 3.5 / lvFoeAtk(); chickenBarrage(b, 2, true); b.arms.forEach(a => a.rotation.x = -2.2); }
+      else b.arms.forEach(a => a.rotation.x *= 1 - Math.min(1, dt * 5));
+    }
+    // 아이바오: 한 줄을 천천히 굴러옴. 지나가는 자리에 깔린 부캉이는 100% 사망. 다 지나가면 다시 뒤로 가서 반복
+    if (b.summon === 'ai' && state === 'run') {
+      const A = b.ai; A.t += dt;
+      if (A.ph === 'enter') {
+        b.z += (-30 - b.z) * Math.min(1, dt * 2); b.x += (0 - b.x) * Math.min(1, dt * 2);
+        b.pivot.rotation.x *= 1 - Math.min(1, dt * 6); b.pivot.scale.set(1, 1, 1);
+        b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI) * 0.4);
+        if (A.t > 1.6) { A.ph = 'aim'; A.t = 0; A.lx = clamp(cx + (Math.random() * 2 - 1) * 0.6, -HALF + AI_W / 2, HALF - AI_W / 2); banner('아이바오 구르기!'); }
+      } else if (A.ph === 'aim') {
+        const q = Math.min(1, A.t / 1.6);
+        b.x += (A.lx - b.x) * Math.min(1, dt * 6);
+        b.pivot.scale.set(1 + 0.15 * q, 1 - 0.3 * q, 1 + 0.15 * q); b.pivot.rotation.x = 0.7 * q;
+        const z1 = b.z + 2, z2 = BAMBOO_END, len = Math.max(1, z2 - z1);
+        aiStripe.visible = true; aiStripe.scale.set(1, len, 1); aiStripe.position.set(A.lx, 0.06, (z1 + z2) / 2);
+        aiStripe.material.opacity = 0.3 + 0.35 * Math.abs(Math.sin(A.t * 10));
+        if (A.t >= 1.6) { A.ph = 'roll'; A.t = 0; }
+      } else if (A.ph === 'roll') {
+        const z0 = b.z; b.z += 9 * dt * sf; b.x = A.lx;   // 천천히 굴러옴
+        b.pivot.rotation.x += 9 * dt / (2.1 * b.sc); b.pivot.scale.set(1.15, 0.8, 1.15);
+        aiStripe.material.opacity = 0.6;
+        const vis = Math.min(pl.n, MAX_ARMY); let c = 0;
+        for (let i = 0; i < vis; i++) { const [x, z] = soldierPos(i); if (Math.abs(x - A.lx) < AI_W / 2 + 0.2 && z > z0 + 1.2 && z <= b.z + 1.2) c++; }
+        if (c) { killSoldiers(c * (pl.n / Math.max(1, vis)), true); shake = Math.max(shake, 0.3); if (Math.random() < 0.4) boom(A.lx + (Math.random() - 0.5) * AI_W, b.z + 1, 1.2, 0xefeadf, 0.6, 0.2); }
+        if (b.z > BAMBOO_END + 2) { A.ph = 'enter'; A.t = 0; aiStripe.visible = false; b.z = -48; b.x = (Math.random() * 2 - 1) * 2; boom(b.x, b.z, 3, 0xefeadf, 1.5, 0.4); }
+      }
+      b.mesh.position.set(b.x, 0, b.z);
+      b.flash = Math.max(0, b.flash - dt * 6);
+      b.mat.color.copy(b.base).lerp(b.flashCol, b.flash * 0.6);
+      continue;
+    }
+    // 푸바오 소환: 루이바오·후이바오는 둘 다 없을 때 한 번에 소환 (14초 간격, 레벨 오를수록 빨라짐)
     if (b.final && state === 'run' && !b.roll && b.z > -55) {
-      b.cloneCd = (b.cloneCd ?? 3) - dt;
-      if (b.cloneCd <= 0) {
-        b.cloneCd = 9 / lvFoeAtk();
-        const alive = bosses.filter(o => o.clone && o.owner === b && !o.dead).length;
-        const want = Math.min((b.phase3 ? 3 : 2) - alive, b.phase2 ? 2 : 1);
-        if (want > 0) { const before = bosses.length; for (let k = 0; k < want; k++) spawnClone(b); banner('분신술! ' + bosses.slice(before).map(o => o.name).join('·') + ' 등장'); boom(b.x, b.z, 6, 0xcdb8ff, 3, 0.5); }
+      b.pairCd = (b.pairCd ?? 3) - dt;
+      if (b.pairCd <= 0 && !bosses.some(o => (o.summon === 'rui' || o.summon === 'hui') && !o.dead)) {
+        b.pairCd = 14 / lvFoeAtk();
+        spawnSummon(b, 'rui', clamp(b.x - 2.6, -HALF + 1, HALF - 1)); spawnSummon(b, 'hui', clamp(b.x + 2.6, -HALF + 1, HALF - 1));
+        banner('루이바오·후이바오 소환!'); boom(b.x, b.z, 6, 0xefeadf, 3, 0.5);
       }
     }
     // 푸바오 대나무 던지기: 경고 줄 → 대나무를 들어 던짐 → 그 줄을 굴러와 줄 안 병력 30~50% 날림
@@ -1526,14 +1585,14 @@ function update(dt) {
       }
       if (b.z >= front - b.reach) { b.dash = null; b.attached = true; }
     } else if (!b.attached) {
-      if (b.howl <= 0) b.z += b.speed * dt * sf;
+      if (b.howl <= 0 && !(b.stopZ && b.z >= b.stopZ)) b.z += b.speed * dt * sf;
       b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
       b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI * (i < 2 ? 1 : 0.5)) * 0.45);
       if (b.z >= front - b.reach) b.attached = true;
     } else if (state === 'run') {
       b.z = front - b.reach; b.atk += dt;
       b.arms.forEach((a, i) => a.rotation.x = -Math.abs(Math.sin(b.atk * 8 + i)) * 1.2);
-      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : b.clone ? 0.035 : 0.025)))); }
+      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : b.summon ? 0.035 : 0.025)))); }
     }
     if (b.wolf && state === 'run') {
       if (b.z > -55 && !b.dash) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 8 / lvFoeAtk(); wolfHowl(b); } }
@@ -1742,7 +1801,7 @@ function draw(t) {
   else { armyTag.textContent = pl.n; place(armyTag, cx, 1.7, 0.6); }
   for (const b of bosses) {
     if (b.dead || state === 'menu' || b.z < SPAWN_Z + 8) { b.el.hidden = true; continue; }
-    b.el.textContent = (b.final ? '푸바오 ' : b.clone ? b.name + ' ' : '늑구 ') + Math.ceil(b.hp);
+    b.el.textContent = (b.final ? '푸바오 ' : b.summon ? b.name + ' ' : '늑구 ') + Math.ceil(b.hp);
     place(b.el, b.x, 6.1 * b.sc, b.z);
   }
   mids = mids.filter(m => {
