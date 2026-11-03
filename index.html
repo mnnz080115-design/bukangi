@@ -652,7 +652,7 @@ const PRIORITY = { 3: 3, 7: 5, 8: 4, 9: 3 };
 function pickTarget() {
   let best = null, bs = -Infinity;
   for (const zb of zombies) {
-    if (zb.dead || zb.z < -RANGE || zb.incoming >= zb.hp) continue;
+    if (zb.dead || zb.air || zb.z < -RANGE || zb.incoming >= zb.hp) continue;
     const sc = zb.z - Math.abs(zb.x - cx) * 0.6 + (PRIORITY[zb.type] || 0);
     if (sc > bs) { bs = sc; best = zb; }
   }
@@ -722,7 +722,7 @@ function hurt(tg, dmg) {
     boom(tg.x, tg.z, 1.2, 0xd4e157);
   } else if (tg.type === 3) {             // 자폭병이 총에 맞아 터짐: 주변 좀비도 피해
     boom(tg.x, tg.z, 2.2, 0xff6a2a);
-    for (const o of zombies) if (o !== tg && !o.dead && Math.hypot(o.x - tg.x, o.z - tg.z) < 2.2) hurt(o, tg.max * 1.5);
+    for (const o of zombies) if (o !== tg && !o.dead && !o.air && Math.hypot(o.x - tg.x, o.z - tg.z) < 2.2) hurt(o, tg.max * 1.5);
   }
 }
 
@@ -873,11 +873,21 @@ function update(dt) {
     }
     if (!zb.attached) {
       if (zb.type === 9) {
-        // 작은 늑구: 웅크렸다가(0.25초) 도약(0.45초)을 반복하며 달려듦
-        zb.lp = (zb.lp ?? Math.random() * 0.7) + dt;
-        const ph = zb.lp % 0.7;
-        if (ph < 0.25) { zb.hop = 0; zb.crouch = Math.sin(ph / 0.25 * Math.PI); zb.z += zb.speed * 0.15 * dt; }
-        else { const q = (ph - 0.25) / 0.45; zb.hop = Math.sin(q * Math.PI) * 1.3; zb.crouch = 0; zb.pitch = (q - 0.5) * 0.9; zb.z += zb.speed * 1.47 * dt; }
+        // 작은 늑구: 달려오다가 가까워지면 웅크렸다(0.3초) 한 번에 도약해서 부대에 덮침
+        if (zb.leap) {
+          const L = zb.leap; L.t += dt;
+          if (L.t < 0.3) { zb.crouch = Math.sin(L.t / 0.3 * Math.PI); }
+          else {
+            const q = Math.min(1, (L.t - 0.3) / 0.6);
+            zb.air = q < 1; zb.crouch = 0; zb.pitch = (q - 0.5) * 0.9;
+            zb.hop = Math.sin(q * Math.PI) * 3.2;
+            zb.z = L.z0 + (front - L.z0) * q; zb.x = L.x0 + (cx - L.x0) * q;
+            if (q >= 1) { zb.air = false; zb.hop = 0; zb.leap = null; zb.attached = true; zb.z = front; boom(zb.x, zb.z, 1.1, 0x8a939c, 0.6, 0.2); }
+          }
+          continue;
+        }
+        zb.z += zb.speed * dt;
+        if (zb.z > front - 10 && state === 'run') zb.leap = { t: 0, z0: zb.z, x0: zb.x };
       } else zb.z += zb.speed * dt;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
       if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : zb.type === 9 ? 7 : 2.4) * dt, Math.abs(cx - zb.x));
@@ -940,7 +950,11 @@ function update(dt) {
   // 보스
   for (const b of bosses) {
     if (b.dead) {
-      b.dead += dt; b.mesh.rotation.x = Math.max(-Math.PI / 2, -b.dead * 3);
+      b.dead += dt;
+      b.z += SCROLL * dt;                                             // 시체는 배경과 함께 뒤로 흘러감
+      b.mesh.rotation.set(0, 0, Math.min(Math.PI / 2, b.dead * 4));   // 옆으로 쓰러짐
+      b.mesh.position.set(b.x, -Math.max(0, b.dead - 0.6) * 1.5, b.z); // 쓰러진 뒤 물에 가라앉음
+      b.mesh.visible = b.dead < 3 && b.z < 18;
       b.el.hidden = true; continue;
     }
     if (b.final && !b.phase2 && b.hp < b.max * 0.5) {
@@ -1016,6 +1030,14 @@ function update(dt) {
     let tx = null, tz, ty = 0.8;
     if (tg && tg.gt) { if (!tg.gt.used) { tx = tg.k ? HALF / 2 : -HALF / 2; tz = tg.gt.z; ty = 1.6; } }
     else if (tg && !tg.dead) { tx = tg.x; tz = tg.z; ty = tg.final !== undefined ? 2.5 * tg.sc : 0.8; }
+    if (tg && !tg.gt && tg.air) {
+      tg.incoming -= bl.dmg;
+      const nt = pickTarget();
+      bl.target = nt && !nt.gt ? nt : null;
+      if (bl.target) nt.incoming += bl.dmg;
+      if (!bl.target) bl.z -= bl.w.speed * dt;
+      continue;
+    }
     if (tx === null) { bl.z -= bl.w.speed * dt; continue; }
     const dx = tx - bl.x, dy = ty - bl.y, dz = tz - bl.z, d = Math.hypot(dx, dy, dz), step = bl.w.speed * dt;
     if (d > step + 0.3) { bl.x += dx / d * step; bl.y += dy / d * step; bl.z += dz / d * step; continue; }
@@ -1033,7 +1055,7 @@ function update(dt) {
       hurt(tg, dmg);
       if (bl.w.splash) {
         boom(tx, tz, bl.w.splash);
-        for (const zb of zombies) if (zb !== tg && !zb.dead && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg * 0.7);
+        for (const zb of zombies) if (zb !== tg && !zb.dead && !zb.air && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg * 0.7);
       }
     }
   }
