@@ -532,8 +532,8 @@ function popText(txt, x, y, z, color) {
   el.style.left = (v3.x * 0.5 + 0.5) * innerWidth + 'px'; el.style.top = (-v3.y * 0.5 + 0.5) * innerHeight + 'px';
   labels.appendChild(el); setTimeout(() => el.remove(), 950);
 }
-function banner(txt) {
-  const el = document.createElement('div'); el.className = 'banner'; el.textContent = txt;
+function banner(txt, cls = '') {
+  const el = document.createElement('div'); el.className = 'banner' + (cls ? ' ' + cls : ''); el.textContent = txt;
   document.body.appendChild(el); setTimeout(() => el.remove(), 1650);
 }
 const armyTag = tag('army');
@@ -1000,11 +1000,11 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 const UP_COST = [0, 80, 200, 400, 700];   // Lv n → n+1 비용 (index = 현재 레벨)
 const SKILLS = [
   { id: 'water', icon: '🌊', unlock: 0, need: 4, tiers: [
-    { n: '물살',     d: '내 앞 한 줄로 물살을 쏴서 줄 안의 적 모두에게 큰 피해' },
-    { n: '해일',     d: '화면 전체를 쓸고 가는 파도. 모든 적에게 피해, 뒤로 밀어냄' },
-    { n: '대해일',   d: '더 큰 파도. 피해 증가, 3초 동안 적 이동속도 50% 감소, 보스 피해 1.5배' },
+    { n: '물살',     d: '내 앞으로 굵은 물기둥을 쏴서 그 줄의 적 모두에게 큰 피해' },
+    { n: '해일',     d: '수로 전체를 쓸고 가는 파도. 모든 적에게 피해, 뒤로 밀어냄' },
+    { n: '대해일',   d: '더 높고 두꺼운 파도. 피해 증가, 3초 동안 적 이동속도 50% 감소, 보스 피해 1.5배' },
     { n: '대해일 II', d: '대해일 피해 30% 증가, 감속 4초' },
-    { n: '쓰나미',   d: '최강 파도. 피해 대폭 증가, 감속 5초, 보스 피해 2배' },
+    { n: '쓰나미',   d: '보스보다 큰 초대형 파도. 피해 대폭 증가, 감속 5초, 보스 피해 2배' },
   ] },
   { id: 'gold', icon: '🚪', unlock: 3, need: 6, tiers: [
     { n: '황금문 ×4', d: '바로 앞에 양쪽 모두 ×4인 황금문이 생김' },
@@ -1042,12 +1042,24 @@ function addCharge(v) {
 // 스킬 피해 기준: 지금 내 화력에 맞춘 적 체력 기준값
 const skillBase = () => Math.max(1, strength(pl) * diff * lvFoeHp());
 
-// 물살/파도 연출
-const waterMat = new THREE.MeshBasicMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0, depthWrite: false });
-const jetMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), waterMat); jetMesh.visible = false; scene.add(jetMesh);
-const waveMesh = new THREE.Mesh(new THREE.BoxGeometry(W + 0.4, 2.2, 2.6), new THREE.MeshBasicMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.75, depthWrite: false }));
-const foam = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 0.35, 0.9), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
-foam.position.set(0, 1.2, 0.9); waveMesh.add(foam); waveMesh.visible = false; scene.add(waveMesh);
+// 물살/파도 연출: 파란 물 위에서도 잘 보이도록 흰 거품 + 진한 파랑 + 물보라
+const jetG = new THREE.Group();
+const jetCore = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false }));
+const jetOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x0d7fd6, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
+jetCore.rotation.x = jetOuter.rotation.x = Math.PI / 2; jetG.add(jetOuter, jetCore); jetG.visible = false; scene.add(jetG);
+const waveG = new THREE.Group();
+const waveBody = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 1, 1), new THREE.MeshBasicMaterial({ color: 0x0b6fc2, transparent: true, opacity: 0.88, depthWrite: false }));
+const waveFace = new THREE.Mesh(new THREE.BoxGeometry(W + 0.6, 1, 0.15), new THREE.MeshBasicMaterial({ color: 0xe3f7ff, transparent: true, opacity: 0.9 }));
+const waveLip = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, W + 0.8, 12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+waveLip.rotation.z = Math.PI / 2; waveG.add(waveBody, waveFace, waveLip); waveG.visible = false; scene.add(waveG);
+// 물보라 입자
+const SPRAY_MAX = 260, sprays = [];
+const sprayMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.2, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }), SPRAY_MAX);
+sprayMesh.count = 0; scene.add(sprayMesh);
+function spray(x, y, z, n, spd = 6) {
+  for (let k = 0; k < n && sprays.length < SPRAY_MAX; k++)
+    sprays.push({ x, y, z, vx: (Math.random() * 2 - 1) * spd * 0.5, vy: 3 + Math.random() * spd, vz: (Math.random() * 2 - 1) * spd * 0.4, life: 0.5 + Math.random() * 0.4, s: 0.6 + Math.random() * 1.2 });
+}
 let jet = null, wave = null;
 // 방어막 연출
 const domeMesh = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide }));
@@ -1071,17 +1083,14 @@ function castSkill() {
   if (state !== 'run' || !lv || skCharge < sk.need) return;
   skCharge = 0;
   const P = skillBase();
-  banner(sk.icon + ' ' + sk.tiers[lv - 1].n + '!');
+  popText(sk.tiers[lv - 1].n + '!', cx, 3.2, 0, '#bff3ff');   // 스킬 이름은 부대 위에 띄움 (화면 가운데 연출을 가리지 않게)
   if (sk.id === 'water') {
     if (lv === 1) {
       // 물살: 내 앞 한 줄
-      const x0 = cx, m = 0.6;
-      for (const zb of zombies) if (!zb.dead && !zb.air && zb.z > -RANGE && zb.z < 1 && Math.abs(zb.x - x0) < 1.8) skHurt(zb, P * m);
-      for (const b of bosses) if (!b.dead && b.z > -RANGE && Math.abs(b.x - x0) < 3.2) skHurt(b, P * m);
-      jet = { x: x0, t: 0 };
+      jet = { x: cx, z0: -radius(pl.n) - 0.5, head: -radius(pl.n) - 0.5, w: 3.6, m: 0.6, t: 0, hit: new Set(), done: false };
     } else {
       const T = [null, null, { m: 0.8, push: 6, slow: 0, boss: 1 }, { m: 1.0, push: 9, slow: 3, boss: 1.5 }, { m: 1.3, push: 9, slow: 4, boss: 1.5 }, { m: 1.7, push: 12, slow: 5, boss: 2 }][lv];
-      wave = { z: 0, ...T, hit: new Set() };
+      wave = { z: -radius(pl.n) - 0.5, ...T, h: [0, 0, 2.6, 3.4, 4.3, 5.6][lv], th: [0, 0, 2.2, 2.8, 3.4, 4.2][lv], hit: new Set() };
     }
   } else if (sk.id === 'gold') {
     const mult = 3 + lv;
@@ -1112,26 +1121,52 @@ function sharkTarget() {
 function updateSkills(dt, front) {
   const sk = skillById(save.equip);
   if (state === 'run') { slowT = Math.max(0, slowT - dt); shieldT = Math.max(0, shieldT - dt); }
-  // 물살
+  // 물살: 부대 앞에서 굵은 물기둥이 쭉 뻗어 나감
   if (jet) {
-    jet.t += dt; const a = Math.max(0, 1 - jet.t / 0.6);
-    jetMesh.visible = a > 0; waterMat.opacity = 0.7 * a;
-    jetMesh.scale.set(3.4 * (0.6 + 0.4 * a), 0.7, RANGE); jetMesh.position.set(jet.x, 0.5, -RANGE / 2 - 1);
-    if (a <= 0) jet = null;
+    jet.t += dt;
+    const P = skillBase();
+    if (!jet.done) {
+      jet.head = Math.max(-RANGE - 4, jet.head - 120 * dt);
+      for (const zb of zombies) if (!zb.dead && !zb.air && !jet.hit.has(zb) && zb.z >= jet.head && zb.z < 1 && Math.abs(zb.x - jet.x) < jet.w / 2 + 0.2) { jet.hit.add(zb); skHurt(zb, P * jet.m); spray(zb.x, 0.8, zb.z, 3); }
+      for (const b of bosses) if (!b.dead && !jet.hit.has(b) && b.z >= jet.head && Math.abs(b.x - jet.x) < jet.w / 2 + 1.6) { jet.hit.add(b); skHurt(b, P * jet.m); spray(b.x, 2, b.z + 1, 12, 9); }
+      spray(jet.x, 1, jet.head, 4, 8);
+      if (jet.head <= -RANGE - 4) { jet.done = true; jet.t = 0; }
+    }
+    const a = jet.done ? Math.max(0, 1 - jet.t / 0.45) : 1;
+    const len = jet.z0 - jet.head, wob = 1 + 0.08 * Math.sin(clock * 40);
+    jetG.visible = a > 0;
+    jetG.position.set(jet.x, 0.9, (jet.z0 + jet.head) / 2);
+    jetCore.scale.set(jet.w * 0.38 * wob * (0.5 + 0.5 * a), Math.max(0.1, len), jet.w * 0.3 * (0.5 + 0.5 * a));
+    jetOuter.scale.set(jet.w * wob, Math.max(0.1, len), jet.w * 0.55);
+    jetCore.material.opacity = 0.95 * a; jetOuter.material.opacity = 0.6 * a;
+    if (a <= 0) { jet = null; jetG.visible = false; }
   }
-  // 파도: 부대 앞에서 출발해 멀리까지 쓸고 감
+  // 파도: 부대 앞에서 출발해 멀리까지 쓸고 감. 업그레이드할수록 더 높고 두꺼움
   if (wave) {
-    wave.z -= 55 * dt;
-    waveMesh.visible = true; waveMesh.position.set(0, 1.0, wave.z);
+    wave.z -= 26 * dt;
+    const H = wave.h, TH = wave.th, rise = Math.min(1, (wave.z + 3) / -6 + 0.4);
+    waveG.visible = true; waveG.position.set(0, 0, wave.z);
+    waveBody.scale.set(1, H * rise, TH); waveBody.position.set(0, H * rise / 2, -TH / 2);
+    waveFace.scale.set(1, H * rise, 1); waveFace.position.set(0, H * rise / 2, 0.05);
+    waveLip.scale.set(H * 0.32, 1, H * 0.32); waveLip.position.set(0, H * rise, 0.15);
+    for (let k = 0; k < 3; k++) spray((Math.random() * 2 - 1) * HALF, H * rise, wave.z + 0.3, 1, 7);
     const P = skillBase();
     for (const zb of zombies) {
       if (zb.dead || zb.air || wave.hit.has(zb) || zb.z < wave.z) continue;
       wave.hit.add(zb); skHurt(zb, P * wave.m);
       if (!zb.dead && !(zb.gate && !zb.gate.used)) { zb.attached = false; zb.z -= wave.push; }
     }
-    for (const b of bosses) if (!b.dead && !wave.hit.has(b) && b.z >= wave.z) { wave.hit.add(b); skHurt(b, P * wave.m * wave.boss); }
-    if (wave.z < -RANGE - 6) { waveMesh.visible = false; if (wave.slow) slowT = wave.slow; wave = null; }
+    for (const b of bosses) if (!b.dead && !wave.hit.has(b) && b.z >= wave.z) { wave.hit.add(b); skHurt(b, P * wave.m * wave.boss); spray(b.x, 3, b.z + 1, 20, 10); }
+    if (wave.z < -RANGE - 8) { waveG.visible = false; if (wave.slow) slowT = wave.slow; wave = null; }
   }
+  // 물보라
+  let ns = 0;
+  for (const p of sprays) {
+    p.life -= dt; p.vy -= 18 * dt; p.x += p.vx * dt; p.y = Math.max(0.1, p.y + p.vy * dt); p.z += p.vz * dt;
+    if (p.life > 0 && ns < SPRAY_MAX) { dummy.rotation.set(0, 0, 0); const sc = p.s * Math.min(1, p.life * 2.5); dummy.scale.set(sc, sc, sc); dummy.position.set(p.x, p.y, p.z); dummy.updateMatrix(); sprayMesh.setMatrixAt(ns++, dummy.matrix); }
+  }
+  for (let k = sprays.length - 1; k >= 0; k--) if (sprays[k].life <= 0) sprays.splice(k, 1);
+  sprayMesh.count = ns; sprayMesh.instanceMatrix.needsUpdate = true;
   // 방어막
   const r = radius(pl.n) + 1.1;
   domeMesh.visible = shieldT > 0 && state === 'run';
@@ -1179,7 +1214,7 @@ function updateSkills(dt, front) {
 function resetSkills() {
   const sk = skillById(save.equip);
   skCharge = sk.need * 0.5; slowT = 0; shieldT = 0; jet = null; wave = null;
-  jetMesh.visible = waveMesh.visible = domeMesh.visible = false;
+  jetG.visible = waveG.visible = domeMesh.visible = false; sprays.length = 0;
   allies.forEach(a => { a.on = false; a.g.visible = false; });
   document.getElementById('skIcon').textContent = sk.icon;
   document.getElementById('skName').textContent = sk.tiers[skillLv(sk.id) - 1].n;
