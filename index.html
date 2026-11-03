@@ -109,7 +109,7 @@ button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
       <div><i style="background:#a4b83a"></i><span><b>분열</b> 죽으면 작은 놈 3마리로</span></div>
       <div><i style="background:#ff6b8a"></i><span><b>치료병</b> 뒤에서 주변을 회복</span></div>
       <div><i style="background:#6b4226"></i><span><b>문 파괴범</b> 문 숫자를 깎음</span></div>
-      <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 돌을 던짐</span></div>
+      <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 적을 작은 늑구로 바꾸고 문을 물어감</span></div>
       <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 생닭을 계속 보냄</span></div>
     </div>
     <p style="font-size:12.5px">PC: ← → 또는 A D · 모바일: 화면 드래그</p>
@@ -153,7 +153,7 @@ const WEAPONS = [
   { name: '기관총',  rate: 1.8,  power: 0.8, speed: 62, size: 0.8, color: 0xfff08a, splash: 0,   vis: 90, gun: [1, 1.2, 1.4] },
   { name: '바주카포', rate: 0.35, power: 6,   speed: 30, size: 2.6, color: 0xff7a1a, splash: 2.1, vis: 26, gun: [2.4, 2.4, 1.7] },
 ];
-// 적 종류: 0좀비 1장갑 2사수 3자폭 4방패 5분열 6꼬마 7치료 8문파괴
+// 적 종류: 0좀비 1장갑 2사수 3자폭 4방패 5분열 6꼬마 7치료 8문파괴 9작은늑구
 const FOE = [
   { hp: 1,   speed: 1,    scale: 1,    body: 0x7a8f5c, head: 0x9fbf7a },
   { hp: 4,   speed: 0.72, scale: 1.25, body: 0x59636e, head: 0x8a939c },
@@ -164,6 +164,7 @@ const FOE = [
   { hp: 0.5, speed: 1.3,  scale: 0.6,  body: 0xa4b83a, head: 0xd4e157 },
   { hp: 2.5, speed: 0.9,  scale: 1,    body: 0xf4f1ea, head: 0xff6b8a },
   { hp: 5,   speed: 0.9,  scale: 1.3,  body: 0x6b4226, head: 0x9fbf7a },
+  { hp: 1.5, speed: 2.6,  scale: 1,    body: 0x5f6a74, head: 0xdfe3e6 },
 ];
 const MAX_ARMY = 300, MAX_Z = 800, MAX_B = 700, MAX_EB = 200;
 
@@ -297,6 +298,28 @@ const CHICK = new THREE.Color(0xf2bfa6), CHICK_HOT = new THREE.Color(0xff5a3c);
 function chickenSet(i, x, y, z, s, roll) {
   dummy.rotation.set(0, 0, roll); dummy.scale.set(s, s, s); dummy.position.set(x, y, z); dummy.updateMatrix();
   chickMeat.setMatrixAt(i, dummy.matrix); chickBone.setMatrixAt(i, dummy.matrix);
+}
+
+// 작은 늑구: 하울링으로 변한 졸개
+const MAX_PUP = 200;
+const pupBody = inst(merge([
+  [SPH, Mx(0, 0.55, 0, 0, 0, 0, 0.55, 0.5, 1.0)],
+  [SPH, Mx(0, 0.82, 0.5, 0, 0, 0, 0.45, 0.42, 0.45)],
+  [CONE, Mx(0.13, 1.08, 0.45, 0, 0, -0.15, 0.12, 0.24, 0.08)],
+  [CONE, Mx(-0.13, 1.08, 0.45, 0, 0, 0.15, 0.12, 0.24, 0.08)],
+  [CYL, Mx(0.17, 0.2, 0.3, 0, 0, 0, 0.12, 0.42, 0.12)], [CYL, Mx(-0.17, 0.2, 0.3, 0, 0, 0, 0.12, 0.42, 0.12)],
+  [CYL, Mx(0.17, 0.2, -0.3, 0, 0, 0, 0.12, 0.42, 0.12)], [CYL, Mx(-0.17, 0.2, -0.3, 0, 0, 0, 0.12, 0.42, 0.12)],
+  [CYL, Mx(0, 0.7, -0.6, -1.1, 0, 0, 0.1, 0.4, 0.1)],
+]), phong(0xffffff), MAX_PUP, true);
+const pupFace = inst(merge([
+  [CYL, Mx(0, 0.76, 0.8, Math.PI / 2, 0, 0, 0.18, 0.26, 0.16)],
+  [SPH, Mx(0, 0.5, 0.32, 0, 0, 0, 0.4, 0.34, 0.3)],
+]), phong(0xdfe3e6), MAX_PUP);
+const pupEye = inst(merge([[SPH, Mx(0.1, 0.9, 0.7, 0, 0, 0, 0.08)], [SPH, Mx(-0.1, 0.9, 0.7, 0, 0, 0, 0.08)]]), new THREE.MeshBasicMaterial({ color: 0xffd23f }), MAX_PUP);
+const PUP = new THREE.Color(0x5f6a74);
+function pupSet(i, x, y, z, s, lean) {
+  dummy.rotation.set(lean, 0, 0); dummy.scale.set(s, s, s); dummy.position.set(x, y, z); dummy.updateMatrix();
+  pupBody.setMatrixAt(i, dummy.matrix); pupFace.setMatrixAt(i, dummy.matrix); pupEye.setMatrixAt(i, dummy.matrix);
 }
 
 // 늑구 (중간 보스)와 푸바오 (최종 보스)
@@ -603,7 +626,7 @@ function spawnBoss(ev) {
   const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * (final ? 6.8 : 3.2)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
-    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, armyStart: Math.max(1, pl.n), el: tag('boss') });
+    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, armyStart: Math.max(1, pl.n), el: tag('boss') });
   banner(final ? '푸바오 등장! 생닭 주의' : '늑구 등장!');
 }
 
@@ -624,7 +647,7 @@ addEventListener('pointerup', () => { drag = null; });
 
 // ---------- 전투 ----------
 function soldierPos(i) { const lim = HALF - 0.35; return [Math.max(-lim, Math.min(lim, cx + offs[i][0])), offs[i][1]]; }
-const PRIORITY = { 3: 3, 7: 5, 8: 4 };
+const PRIORITY = { 3: 3, 7: 5, 8: 4, 9: 3 };
 
 function pickTarget() {
   let best = null, bs = -Infinity;
@@ -747,6 +770,48 @@ function passGate(g) {
   if (pl.n <= 0) finish(false);
 }
 
+// 늑구 하울링: 근처 졸개들이 작은 늑구로 변해서 달려듦
+function wolfHowl(b) {
+  b.howl = 1.1;
+  banner('늑구 하울링!');
+  boom(b.x, b.z, 14, 0xb8c4d0, 0.5, 0.6); shake = Math.max(shake, 0.25);
+  const near = zombies.filter(zb => !zb.dead && zb.type !== 3 && zb.type !== 9 && !(zb.gate && !zb.gate.used) && Math.hypot(zb.x - b.x, zb.z - b.z) < 14)
+    .sort((p, q) => Math.hypot(p.x - b.x, p.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z)).slice(0, 14);
+  for (const zb of near) {
+    zb.type = 9; zb.attached = false; zb.breaker = false; zb.gate = null;
+    zb.speed = ZOMBIE_SPEED * FOE[9].speed * lvFoeSpd();
+    boom(zb.x, zb.z, 0.9, 0x8a939c, 0.6, 0.25);
+  }
+  // 근처에 변할 졸개가 적으면 늑구가 직접 새끼를 부름
+  const h = Math.max(1, strength(pl) * diff * 0.05);
+  for (let k = near.length; k < 4; k++)
+    makeZombie(9, h / FOE[9].hp, clamp(b.x + (k - 1.5) * 1.2, -HALF + 0.4, HALF - 0.4), b.z + 1.5);
+}
+
+// 늑구가 문 옆을 지날 때 좋은 쪽 문을 물어가서 나쁜 문으로 바꿈
+function biteOp(op) {
+  switch (op.t) {
+    case 'mul': return { t: 'div', v: op.v };
+    case 'add': return { t: 'add', v: -Math.max(3, Math.round(Math.abs(op.v) * 0.6)) };
+    case 'rate': case 'pow': return { t: op.t, v: -Math.max(10, Math.round(Math.abs(op.v) * 0.6)) };
+    case 'wup': return { t: 'wdown' };
+    default: return op;
+  }
+}
+function wolfBite(b, g) {
+  g.bitten = true;
+  const good = [0, 1].filter(k => opGood(g.ops[k]));
+  if (!good.length) return;
+  // 둘 다 좋으면 더 좋은 쪽을 물어감
+  const k = good.length === 1 ? good[0] : (strength(applyTo(pl, g.ops[0])) >= strength(applyTo(pl, g.ops[1])) ? 0 : 1);
+  g.ops[k] = biteOp(g.ops[k]); g.acc[k] = 0; drawGate(g, k);
+  b.lunge = { x: k ? HALF / 2 : -HALF / 2, t: 0.5 };
+  const gx = k ? HALF / 2 : -HALF / 2;
+  boom(gx, g.z, 1.6, 0x5f6a74, 1.2, 0.3);
+  popText('늑구가 물어감!', gx, 3.4, g.z, '#ffd0c9');
+  shake = Math.max(shake, 0.2);
+}
+
 function throwRock(b) {
   const r = rocks.find(r => !r.active); if (!r || !pl.n) return;
   const [tx, tz] = soldierPos(Math.floor(Math.random() * Math.min(pl.n, MAX_ARMY)));
@@ -809,7 +874,7 @@ function update(dt) {
     if (!zb.attached) {
       zb.z += zb.speed * dt;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
-      if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : 2.4) * dt, Math.abs(cx - zb.x));
+      if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : zb.type === 9 ? 7 : 2.4) * dt, Math.abs(cx - zb.x));
       zb.x = clamp(zb.x, -HALF + 0.3, HALF - 0.3);
       if (zb.z >= front && Math.abs(zb.x - cx) < r + 1.2) {
         if (zb.type === 3) { zb.z = front; explodeOnArmy(zb); continue; }
@@ -819,7 +884,7 @@ function update(dt) {
     } else {
       zb.z = front; zb.x += Math.sign(cx - zb.x) * Math.min(3 * dt, Math.abs(cx - zb.x) * 0.5);
       zb.atk += dt;
-      const heavy = zb.type === 1 || zb.type === 8 || zb.type === 5;
+      const heavy = zb.type === 1 || zb.type === 8 || zb.type === 5 || zb.type === 9;
       if (zb.atk >= (heavy ? 0.45 : 0.6) / lvFoeAtk()) { zb.atk = 0; killSoldiers(heavy ? 2 : 1); }
     }
   }
@@ -877,9 +942,14 @@ function update(dt) {
       b.eyeM.color.set(0xff2020); b.base.set(0xf2b4aa); b.el.classList.add('rage');
       banner('푸바오 분노!');
     }
+    if (!b.final) {
+      b.howl = Math.max(0, b.howl - dt);
+      b.mesh.rotation.x = b.howl > 0 ? -0.45 * Math.sin(Math.min(1, b.howl / 1.1) * Math.PI) : 0;
+    }
     if (!b.attached) {
-      b.z += b.speed * dt;
-      b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
+      if (b.howl <= 0) b.z += b.speed * dt;
+      if (b.lunge && b.lunge.t > 0) { b.lunge.t -= dt; b.x += (b.lunge.x - b.x) * Math.min(1, dt * 10); }
+      else b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
       b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI * (i < 2 ? 1 : 0.5)) * 0.45);
       if (b.z >= front - b.reach) b.attached = true;
     } else if (state === 'run') {
@@ -887,7 +957,11 @@ function update(dt) {
       b.arms.forEach((a, i) => a.rotation.x = -Math.abs(Math.sin(b.atk * 8 + i)) * 1.2);
       if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : 0.025)))); }
     }
-    if (state === 'run' && b.z > -36) {
+    if (!b.final && state === 'run') {
+      if (b.z > -55) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 6.5 / lvFoeAtk(); wolfHowl(b); } }
+      for (const g of gates) if (!g.used && !g.bitten && Math.abs(g.z - b.z) < 1.5) wolfBite(b, g);
+    }
+    if (b.final && state === 'run' && b.z > -36) {
       b.throwCd -= dt;
       if (b.throwCd <= 0) { b.throwCd = (b.final ? (b.phase2 ? 1.6 : 3) : 4) / lvFoeAtk(); throwRock(b); if (b.phase2) setTimeout(() => state === 'run' && !b.dead && throwRock(b), 350); }
     }
@@ -993,7 +1067,7 @@ function draw(t) {
   }
   armyMesh.commit(vis); gunMesh.count = vis; gunMesh.instanceMatrix.needsUpdate = true;
 
-  let n = 0, ns = 0, nc = 0, nch = 0;
+  let n = 0, ns = 0, nc = 0, nch = 0, np = 0;
   for (const zb of zombies) {
     if (n >= MAX_Z) break;
     const f = FOE[zb.type];
@@ -1010,6 +1084,15 @@ function draw(t) {
         const heat = zb.dead ? 1 : Math.max(zb.flash, (Math.sin(t * 16 + zb.ph) * 0.5 + 0.5) * 0.35);
         chickMeat.setColorAt(nch, tmpB.copy(CHICK).lerp(CHICK_HOT, heat));
         nch++;
+      }
+      continue;
+    }
+    if (zb.type === 9) {
+      if (np < MAX_PUP) {
+        const bob = zb.dead ? 0 : Math.abs(Math.sin(t * 16 + zb.ph)) * 0.18;
+        pupSet(np, zb.x, bob, zb.z, 1.1 * sy, zb.attached ? 0.3 + Math.abs(Math.sin(t * 12 + zb.ph)) * 0.3 : 0);
+        pupBody.setColorAt(np, tmpB.copy(PUP).lerp(WHITE, zb.flash * 0.7));
+        np++;
       }
       continue;
     }
@@ -1030,6 +1113,9 @@ function draw(t) {
   }
   zombieMesh.commit(n);
   chickMeat.count = chickBone.count = nch; chickMeat.instanceMatrix.needsUpdate = chickBone.instanceMatrix.needsUpdate = true; chickMeat.instanceColor.needsUpdate = true;
+  pupBody.count = pupFace.count = pupEye.count = np;
+  pupBody.instanceMatrix.needsUpdate = pupFace.instanceMatrix.needsUpdate = pupEye.instanceMatrix.needsUpdate = true;
+  if (pupBody.instanceColor) pupBody.instanceColor.needsUpdate = true;
   shieldMesh.count = ns; shieldMesh.instanceMatrix.needsUpdate = true;
   crossMesh.count = nc; crossMesh.instanceMatrix.needsUpdate = true;
 
