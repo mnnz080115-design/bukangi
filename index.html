@@ -239,7 +239,7 @@ const ADD_COST = 3, PCT_COST = 5;
 const WEAPONS = [
   { name: '권총',    rate: 0.6,  power: 1,   speed: 48, size: 1.0, color: 0xffd23f, splash: 0,   vis: 70, gun: [1, 1, 0.6] },
   { name: '기관총',  rate: 1.8,  power: 0.8, speed: 62, size: 0.8, color: 0xfff08a, splash: 0,   vis: 90, gun: [1, 1.2, 1.4] },
-  { name: '바주카포', rate: 0.35, power: 6,   speed: 30, size: 2.6, color: 0xff7a1a, splash: 2.1, vis: 26, gun: [2.4, 2.4, 1.7] },
+  { name: '바주카포', rate: 0.4,  power: 9,   speed: 46, size: 2.6, color: 0xff7a1a, splash: 3.0, vis: 26, gun: [2.4, 2.4, 1.7] },
 ];
 // 적 종류: 0좀비 1장갑 2사수 3자폭 4방패 5분열 6꼬마 7치료 8문파괴 9작은늑구
 const FOE = [
@@ -540,7 +540,7 @@ const armyTag = tag('army');
 
 // ---------- 플레이어 상태와 문 ----------
 let pl = { n: 0, tier: 0, rate: 1, pow: 1 };
-const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 1.6 : 1); };
+const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 0.6 : 1); };
 const strength = s => Math.max(1, s.n) * dpsPer(s);
 function applyTo(s, op) {
   const r = { ...s };
@@ -573,14 +573,14 @@ function drawGate(g, k) {
   const op = g.ops[k], c = g.canvases[k], x = c.getContext('2d');
   const [big, small] = opLabel(op);
   x.clearRect(0, 0, 256, 128);
-  x.fillStyle = g.gold ? 'rgba(232,170,20,0.95)' : op.t === 'wup' ? 'rgba(240,138,36,0.85)' : opGood(op) ? 'rgba(43,99,217,0.78)' : 'rgba(217,63,50,0.78)';
+  x.fillStyle = g.goldK === k ? 'rgba(232,170,20,0.95)' : op.t === 'wup' ? 'rgba(240,138,36,0.85)' : opGood(op) ? 'rgba(43,99,217,0.78)' : 'rgba(217,63,50,0.78)';
   x.fillRect(0, 0, 256, 128);
   x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 120);
   x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
   let fs = 84; x.font = fs + 'px "Black Han Sans", sans-serif';
   while (x.measureText(big).width > 226 && fs > 30) { fs -= 4; x.font = fs + 'px "Black Han Sans", sans-serif'; }
   x.fillText(big, 128, small ? 56 : 68);
-  if (g.gold && !small) { x.font = '22px "Black Han Sans", sans-serif'; x.fillText(g.goldUp ? '황금문 · 총기 ▲' : '황금문', 128, 108); }
+  if (g.goldK === k && !small) { x.font = '22px "Black Han Sans", sans-serif'; x.fillText('황금문', 128, 108); }
   if (small) { x.font = '24px "Black Han Sans", sans-serif'; x.globalAlpha = 0.9; x.fillText(small, 128, 104); x.globalAlpha = 1; }
   if (g.bit && g.bit[k]) {
     // 물린 자국: 위아래 톱니
@@ -727,6 +727,7 @@ function spawnGate(ev) {
   });
   [-HALF, 0, HALF].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.1, 0.25), postMat); p.position.set(x, 1.55, 0); g.group.add(p); });
   g.group.position.z = g.z; levelGroup.add(g.group); gates.push(g);
+  if (pendingGold) { makeGold(g, pendingGold); pendingGold = 0; }
 
   // 문 파괴범: 숫자형 문 쪽에 붙어서 숫자를 깎음
   if (ev.breaker) {
@@ -913,7 +914,6 @@ function passGate(g) {
   const before = pl.n, tierBefore = pl.tier;
   const [big] = opLabel(op);
   pl = applyTo(pl, op);
-  if (g.goldUp) pl = applyTo(pl, { t: 'wup' });
   popText(big, cx, 2.4, 0, opGood(op) ? '#ffffff' : '#ffd0c9');
   g.meshes[k].visible = false; g.meshes[1 - k].material.opacity = 0.3;
   if (pl.n < before || pl.tier < tierBefore) shake = 0.25;
@@ -1007,11 +1007,11 @@ const SKILLS = [
     { n: '쓰나미',   d: '보스보다 큰 초대형 파도. 피해 대폭 증가, 감속 5초, 보스 피해 2배' },
   ] },
   { id: 'gold', icon: '🚪', unlock: 3, need: 6, tiers: [
-    { n: '황금문 ×4', d: '바로 앞에 양쪽 모두 ×4인 황금문이 생김' },
-    { n: '황금문 ×5', d: '양쪽 모두 ×5인 황금문' },
-    { n: '황금문 ×6', d: '양쪽 모두 ×6인 황금문' },
-    { n: '황금문 ×7', d: '양쪽 모두 ×7인 황금문' },
-    { n: '황금문 ×8', d: '양쪽 모두 ×8인 황금문 + 통과하면 총기 한 단계 업그레이드' },
+    { n: '황금문',     d: '다음에 오는 문 한쪽이 황금문(×4~×9 랜덤)으로 바뀜. 배수가 높을수록 드묾' },
+    { n: '황금문 II',  d: '높은 배수가 나올 확률 증가' },
+    { n: '황금문 III', d: '높은 배수가 나올 확률 더 증가' },
+    { n: '황금문 IV',  d: '높은 배수가 나올 확률 크게 증가' },
+    { n: '황금문 V',   d: '×6 이상이 절반 넘게 나옴' },
   ] },
   { id: 'shield', icon: '🛡️', unlock: 5, need: 5, tiers: [
     { n: '방어막',     d: '3초 동안 부캉이가 한 마리도 죽지 않음' },
@@ -1029,6 +1029,28 @@ const SKILLS = [
   ] },
 ];
 const skillById = id => SKILLS.find(k => k.id === id);
+// 황금문 배수 확률 (×4, ×5, ×6, ×7, ×8, ×9) — 업그레이드할수록 높은 배수 확률 증가
+const GOLD_MULTS = [4, 5, 6, 7, 8, 9];
+const GOLD_ODDS = [null,
+  [50, 25, 13, 7, 4, 1],
+  [40, 27, 16, 9, 5, 3],
+  [30, 27, 20, 12, 7, 4],
+  [22, 25, 22, 15, 10, 6],
+  [15, 20, 22, 19, 14, 10]];
+function rollGold(lv) {
+  const w = GOLD_ODDS[lv]; let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < w.length; i++) { if (r < w[i]) return GOLD_MULTS[i]; r -= w[i]; }
+  return 4;
+}
+let pendingGold = 0;   // 화면에 문이 없을 때: 다음에 나오는 문을 황금문으로 (배수)
+function makeGold(g, mult) {
+  const k = Math.random() < 0.5 ? 0 : 1;   // 한쪽만 황금문. 반대쪽은 원래 문 그대로
+  g.ops[k] = { t: 'mul', v: mult }; g.acc[k] = 0; if (g.bit) g.bit[k] = false;
+  g.goldK = k; g.bitten = true; drawGate(g, k);
+  for (const zb of zombies) if (zb.gate === g && zb.side === k) zb.breaker = false;
+  boom(k ? HALF / 2 : -HALF / 2, g.z, 3, 0xffd54a, 1.6, 0.5);
+  popText('황금문 ×' + mult + '!', k ? HALF / 2 : -HALF / 2, 3.6, g.z, '#ffe27a');
+}
 const skillLv = id => save.skills[id] || 0;
 const unlocked = sk => save.maxClear >= sk.unlock;
 let skCharge = 0, slowT = 0, shieldT = 0, shieldLv = 0, skillHit = false;
@@ -1081,6 +1103,9 @@ function castSkill() {
   if (paused) return;
   const sk = skillById(save.equip), lv = skillLv(sk.id);
   if (state !== 'run' || !lv || skCharge < sk.need) return;
+  if (sk.id === 'gold' && (pendingGold || (!gates.some(o => !o.used && o.goldK === undefined && o.z < -8) && !events.some(e => e.kind === 'gate')))) {
+    popText(pendingGold ? '이미 다음 문 예약됨' : '앞에 남은 문이 없어요', cx, 3.2, 0, '#ffd0c9'); return;   // 게이지 그대로
+  }
   skCharge = 0;
   const P = skillBase();
   popText(sk.tiers[lv - 1].n + '!', cx, 3.2, 0, '#bff3ff');   // 스킬 이름은 부대 위에 띄움 (화면 가운데 연출을 가리지 않게)
@@ -1093,13 +1118,11 @@ function castSkill() {
       wave = { z: -radius(pl.n) - 0.5, ...T, h: [0, 0, 2.6, 3.4, 4.3, 5.6][lv], th: [0, 0, 2.2, 2.8, 3.4, 4.2][lv], hit: new Set() };
     }
   } else if (sk.id === 'gold') {
-    const mult = 3 + lv;
-    let g = gates.find(o => !o.used && o.z > -36 && o.z < -12);
-    if (!g) { spawnGate({ ops: [{ t: 'mul', v: mult }, { t: 'mul', v: mult }] }); g = gates[gates.length - 1]; g.z = -30; g.group.position.z = g.z; }
-    else { g.ops = [{ t: 'mul', v: mult }, { t: 'mul', v: mult }]; g.acc = [0, 0]; g.bit = null; }
-    g.gold = true; g.goldUp = lv >= 5; g.bitten = true; drawGate(g, 0); drawGate(g, 1);
-    for (const zb of zombies) if (zb.gate === g) zb.breaker = false;
-    boom(0, g.z, 4, 0xffd54a, 1.6, 0.5);
+    const mult = rollGold(lv);
+    let g = null;
+    for (const o of gates) if (!o.used && o.goldK === undefined && o.z < -8 && (!g || o.z > g.z)) g = o;   // 앞에 오는 문 중 가장 가까운 것
+    if (g) makeGold(g, mult);
+    else { pendingGold = mult; popText('다음 문이 황금문으로!', cx, 3.6, 0, '#ffe27a'); }
   } else if (sk.id === 'shield') {
     shieldT = 2 + lv; shieldLv = lv;
   } else if (sk.id === 'shark') {
@@ -1212,6 +1235,7 @@ function updateSkills(dt, front) {
   }
 }
 function resetSkills() {
+  pendingGold = 0;
   const sk = skillById(save.equip);
   skCharge = sk.need * 0.5; slowT = 0; shieldT = 0; jet = null; wave = null;
   jetG.visible = waveG.visible = domeMesh.visible = false; sprays.length = 0;
@@ -1541,6 +1565,10 @@ function update(dt) {
       if (!bl.target) bl.z -= bl.w.speed * dt;
       continue;
     }
+    if (tx === null && tg && !tg.gt && tg.dead) {
+      const nt = pickTarget();
+      if (nt) { bl.target = nt; if (!nt.gt) nt.incoming += bl.dmg; continue; }
+    }
     if (tx === null) { bl.z -= bl.w.speed * dt; continue; }
     const dx = tx - bl.x, dy = ty - bl.y, dz = tz - bl.z, d = Math.hypot(dx, dy, dz), step = bl.w.speed * dt;
     if (d > step + 0.3) { bl.x += dx / d * step; bl.y += dy / d * step; bl.z += dz / d * step; continue; }
@@ -1558,7 +1586,7 @@ function update(dt) {
       hurt(tg, dmg);
       if (bl.w.splash) {
         boom(tx, tz, bl.w.splash);
-        for (const zb of zombies) if (zb !== tg && !zb.dead && !zb.air && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg * 0.7);
+        for (const zb of zombies) if (zb !== tg && !zb.dead && !zb.air && Math.hypot(zb.x - tx, zb.z - tz) < bl.w.splash) hurt(zb, bl.dmg);   // 폭발 범위 안 적 전부 100% 피해
       }
     }
   }
@@ -1763,8 +1791,8 @@ function renderHub() {
   document.getElementById('skDetail').innerHTML =
     `<h3>${ok ? k.icon : '🔒'} ${cur.n}</h3>` +
     `<div class="lvpips" aria-label="레벨 ${lv}/5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</div>` +
-    `<p>${cur.d}</p>` + `<p>적에게 피해를 줄수록 충전 · 충전 속도 ${k.need <= 4 ? '빠름' : k.need <= 5 ? '보통' : '느림'}</p>` +
-    (ok && nxt ? `<p class="nx">다음 Lv.${lv + 1}: <b>${nxt.n}</b> — ${nxt.d}</p>` : '') +
+    `<p>${cur.d}</p>` + (k.id === 'gold' && lv ? `<p>확률: ${GOLD_MULTS.map((m, i) => `×${m} ${GOLD_ODDS[lv][i]}%`).join(' · ')}</p>` : '') + `<p>적에게 피해를 줄수록 충전 · 충전 속도 ${k.need <= 4 ? '빠름' : k.need <= 5 ? '보통' : '느림'}</p>` +
+    (ok && nxt ? `<p class="nx">다음 Lv.${lv + 1}: <b>${nxt.n}</b> — ${nxt.d}${k.id === 'gold' ? ` (${GOLD_MULTS.map((m, i) => `×${m} ${GOLD_ODDS[lv + 1][i]}%`).join(' · ')})` : ''}</p>` : '') +
     (ok ? `<div class="skbtns"><button class="gold" id="upBtn" ${!nxt || save.coins < cost ? 'disabled' : ''}>${nxt ? `업그레이드 🪙${cost}` : '최대 레벨'}</button>` +
       `<button id="eqBtn" ${k.id === save.equip ? 'disabled' : ''}>${k.id === save.equip ? '장착 중' : '선택'}</button></div>`
       : `<p>LV ${k.unlock}을 클리어하면 열립니다.</p>`);
