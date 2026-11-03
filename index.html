@@ -540,7 +540,7 @@ const armyTag = tag('army');
 
 // ---------- 플레이어 상태와 문 ----------
 let pl = { n: 0, tier: 0, rate: 1, pow: 1 };
-const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 0.75 : 1); };
+const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow; };   // 총기 종류와 상관없이 실제 화력 그대로 적 체력에 반영
 const strength = s => Math.max(1, s.n) * dpsPer(s);
 function applyTo(s, op) {
   const r = { ...s };
