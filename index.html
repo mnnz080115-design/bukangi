@@ -60,6 +60,7 @@ body{background:var(--sky);color:var(--ink);font-family:var(--font-b);overflow:h
 .tag.army{background:var(--army)}
 .tag.boss{background:var(--foe);font-size:24px;padding:4px 14px}
 .tag.boss.rage{background:#7a0f12}
+.tag.boss.mid{font-size:16px;padding:2px 10px;background:#4a525b}
 .pop{position:absolute;font-family:var(--font-d);font-size:34px;white-space:nowrap;-webkit-text-stroke:2px var(--ink);paint-order:stroke;animation:pop .9s ease-out forwards}
 @keyframes pop{from{opacity:1;translate:-50% 0}to{opacity:0;translate:-50% -70px}}
 .banner{position:fixed;left:50%;top:32%;translate:-50% 0;z-index:6;font-family:var(--font-d);font-size:30px;color:#fff;background:var(--foe);padding:6px 18px;border-radius:10px;white-space:nowrap;pointer-events:none;animation:ban 1.6s ease-out forwards}
@@ -109,7 +110,7 @@ button.ghost{background:#e7e2d6;color:var(--ink);box-shadow:0 4px 0 #b9b2a2}
       <div><i style="background:#a4b83a"></i><span><b>분열</b> 죽으면 작은 놈 3마리로</span></div>
       <div><i style="background:#ff6b8a"></i><span><b>치료병</b> 뒤에서 주변을 회복</span></div>
       <div><i style="background:#6b4226"></i><span><b>문 파괴범</b> 문 숫자를 깎음</span></div>
-      <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 적을 작은 늑구로 바꾸고 문을 물어감</span></div>
+      <div><i style="background:#5f6a74"></i><span><b>늑구</b> 중간 보스, 하울링으로 중간늑구를 부르고 문을 물어뜯음</span></div>
       <div><i style="background:#1c1f23"></i><span><b>푸바오</b> 최종 보스, 생닭을 계속 보냄</span></div>
     </div>
     <p style="font-size:12.5px">PC: ← → 또는 A D · 모바일: 화면 드래그</p>
@@ -499,6 +500,7 @@ function updateHud() {
 }
 
 // ---------- 레벨 ----------
+let mids = [];
 let level = 1, levelGroup = null, gates = [], zombies = [], bullets = [], ebullets = [], events = [], bosses = [], waves = [];
 let state = 'menu', cx = 0, clock = 0, scroll = 0, fireAcc = 0, shake = 0, totalTime = 1, hitFlash = 0;
 let diff = 1.25, diffStart = 1.25, lost = 0;   // 위협도: 내가 잘하면 오르고 못하면 내려감
@@ -524,7 +526,7 @@ function clearLevel() {
     levelGroup.traverse(o => { if (o.material && o.material !== postMat) { o.material.map && o.material.map.dispose(); o.material.dispose(); } });
     scene.remove(levelGroup);
   }
-  bosses.forEach(b => b.el.remove());
+  bosses.forEach(b => b.el.remove()); mids.forEach(m => m.el.remove()); mids = [];
   rocks.forEach(r => { r.active = false; r.m.visible = r.ring.visible = false; });
   labels.querySelectorAll('.pop').forEach(e => e.remove());
 }
@@ -780,21 +782,19 @@ function passGate(g) {
 }
 
 // 늑구 하울링: 근처 졸개들이 작은 늑구로 변해서 달려듦
+// 늑구 하울링: 늑구 체력의 절반짜리 중간늑구를 1마리(체력 절반 이하면 2마리) 소환
 function wolfHowl(b) {
   b.howl = 1.1;
-  banner('늑구 하울링!');
-  boom(b.x, b.z, 14, 0xb8c4d0, 0.5, 0.6); shake = Math.max(shake, 0.25);
-  const near = zombies.filter(zb => !zb.dead && zb.type !== 3 && zb.type !== 9 && !(zb.gate && !zb.gate.used) && Math.hypot(zb.x - b.x, zb.z - b.z) < 14)
-    .sort((p, q) => Math.hypot(p.x - b.x, p.z - b.z) - Math.hypot(q.x - b.x, q.z - b.z)).slice(0, 14);
-  for (const zb of near) {
-    zb.type = 9; zb.attached = false; zb.breaker = false; zb.gate = null;
-    zb.speed = ZOMBIE_SPEED * FOE[9].speed * lvFoeSpd();
-    boom(zb.x, zb.z, 0.9, 0x8a939c, 0.6, 0.25);
+  banner('늑구 하울링! 중간늑구 등장');
+  boom(b.x, b.z, 8, 0xb8c4d0, 0.5, 0.6); shake = Math.max(shake, 0.25);
+  const cnt = b.hp < b.max * 0.5 ? 2 : 1, hp = Math.max(10, Math.round(b.max * 0.5));
+  for (let k = 0; k < cnt; k++) {
+    const x = clamp(b.x + (cnt === 1 ? 0 : (k ? 1.8 : -1.8)), -HALF + 0.8, HALF - 0.8);
+    const zb = makeZombie(9, hp / FOE[9].hp, x, b.z + 2.5, { big: true, el: tag('boss mid') });
+    zb.speed = ZOMBIE_SPEED * 1.6 * lvFoeSpd();
+    mids.push(zb);
+    boom(x, b.z + 2.5, 1.8, 0x8a939c, 1.2, 0.3);
   }
-  // 근처에 변할 졸개가 적으면 늑구가 직접 새끼를 부름
-  const h = Math.max(1, strength(pl) * diff * 0.05);
-  for (let k = near.length; k < 3; k++)
-    makeZombie(9, h / FOE[9].hp, clamp(b.x + (k - 1) * 1.4, -HALF + 0.4, HALF - 0.4), b.z + 1.5);
 }
 
 // 늑구가 문 옆을 지날 때 좋은 쪽 문을 물어가서 나쁜 문으로 바꿈
@@ -889,18 +889,19 @@ function update(dt) {
         // 작은 늑구: 달려오다가 가까워지면 웅크렸다(0.3초) 한 번에 도약해서 부대에 덮침
         if (zb.leap) {
           const L = zb.leap; L.t += dt;
-          if (L.t < 0.3) { zb.crouch = Math.sin(L.t / 0.3 * Math.PI); }
+          const prep = zb.big ? 0.4 : 0.3, fly = zb.big ? 0.75 : 0.6;
+          if (L.t < prep) { zb.crouch = Math.sin(L.t / prep * Math.PI); }
           else {
-            const q = Math.min(1, (L.t - 0.3) / 0.6);
+            const q = Math.min(1, (L.t - prep) / fly);
             zb.air = q < 1; zb.crouch = 0; zb.pitch = (q - 0.5) * 0.9;
-            zb.hop = Math.sin(q * Math.PI) * 3.2;
+            zb.hop = Math.sin(q * Math.PI) * (zb.big ? 4.5 : 3.2);
             zb.z = L.z0 + (front - L.z0) * q; zb.x = L.x0 + (cx - L.x0) * q;
-            if (q >= 1) { zb.air = false; zb.hop = 0; zb.leap = null; zb.attached = true; zb.z = front; boom(zb.x, zb.z, 1.1, 0x8a939c, 0.6, 0.2); }
+            if (q >= 1) { zb.air = false; zb.hop = 0; zb.leap = null; zb.attached = true; zb.z = front; boom(zb.x, zb.z, zb.big ? 2.4 : 1.1, 0x8a939c, 0.6, 0.2); if (zb.big) { shake = Math.max(shake, 0.35); killSoldiers(Math.max(2, Math.ceil(pl.n * 0.04))); } }
           }
           continue;
         }
         zb.z += zb.speed * dt;
-        if (zb.z > front - 10 && state === 'run') zb.leap = { t: 0, z0: zb.z, x0: zb.x };
+        if (zb.z > front - (zb.big ? 13 : 10) && state === 'run') zb.leap = { t: 0, z0: zb.z, x0: zb.x };
       } else zb.z += zb.speed * dt;
       if (zb.type === 3) zb.x += Math.sin(clock * 5 + zb.ph) * 2.5 * dt;   // 자폭병은 지그재그로 달려옴
       if (zb.z > -22) zb.x += Math.sign(cx - zb.x) * Math.min((zb.type === 3 ? 28 : zb.type === 9 ? 7 : 2.4) * dt, Math.abs(cx - zb.x));
@@ -914,7 +915,7 @@ function update(dt) {
       zb.z = front; zb.x += Math.sign(cx - zb.x) * Math.min(3 * dt, Math.abs(cx - zb.x) * 0.5);
       zb.atk += dt;
       const heavy = zb.type === 1 || zb.type === 8 || zb.type === 5 || zb.type === 9;
-      if (zb.atk >= (heavy ? 0.45 : 0.6) / lvFoeAtk()) { zb.atk = 0; killSoldiers(heavy ? 2 : 1); }
+      if (zb.atk >= (heavy ? 0.45 : 0.6) / lvFoeAtk()) { zb.atk = 0; killSoldiers(zb.big ? Math.max(2, Math.ceil(pl.n * 0.02)) : heavy ? 2 : 1); }
     }
   }
   zombies = zombies.filter(zb => !zb.dead || zb.dead < 0.35);
@@ -1005,7 +1006,7 @@ function update(dt) {
       if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : 0.025)))); }
     }
     if (!b.final && state === 'run') {
-      if (b.z > -55 && !b.dash) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 3 / lvFoeAtk(); wolfHowl(b); } }
+      if (b.z > -55 && !b.dash) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 8 / lvFoeAtk(); wolfHowl(b); } }
       b.biteCd = (b.biteCd ?? 0) - dt;
       if (!b.dash && !b.attached && b.howl <= 0 && b.biteCd <= 0) {
         for (const g of gates) {
@@ -1154,7 +1155,7 @@ function draw(t) {
       if (np < MAX_PUP) {
         const air = zb.dead || zb.attached ? 0 : (zb.hop || 0);
         const lean = zb.attached ? 0.3 + Math.abs(Math.sin(t * 12 + zb.ph)) * 0.3 : air > 0 ? (zb.pitch || 0) : 0;
-        pupSet(np, zb.x, air, zb.z, 1.1 * sy, lean, 1 - (zb.dead || zb.attached ? 0 : (zb.crouch || 0)) * 0.3);
+        pupSet(np, zb.x, air, zb.z, (zb.big ? 2.3 : 1.1) * sy, lean, 1 - (zb.dead || zb.attached ? 0 : (zb.crouch || 0)) * 0.3);
         pupBody.setColorAt(np, tmpB.copy(PUP).lerp(WHITE, zb.flash * 0.7));
         np++;
       }
@@ -1211,6 +1212,12 @@ function draw(t) {
     b.el.textContent = (b.final ? '푸바오 ' : '늑구 ') + Math.ceil(b.hp);
     place(b.el, b.x, 6.1 * b.sc, b.z);
   }
+  mids = mids.filter(m => {
+    if (m.dead || state === 'menu' || !zombies.includes(m)) { m.el.remove(); return false; }
+    m.el.textContent = '중간늑구 ' + Math.ceil(m.hp);
+    place(m.el, m.x, 3.2 + (m.hop || 0), m.z);
+    return true;
+  });
   document.getElementById('prog').style.width = (Math.min(1, clock / totalTime) * 100).toFixed(1) + '%';
 }
 
