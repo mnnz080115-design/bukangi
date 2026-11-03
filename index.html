@@ -540,7 +540,7 @@ const armyTag = tag('army');
 
 // ---------- 플레이어 상태와 문 ----------
 let pl = { n: 0, tier: 0, rate: 1, pow: 1 };
-const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 0.6 : 1); };
+const dpsPer = s => { const w = WEAPONS[s.tier]; return w.rate * s.rate * w.power * s.pow * (w.splash ? 0.75 : 1); };
 const strength = s => Math.max(1, s.n) * dpsPer(s);
 function applyTo(s, op) {
   const r = { ...s };
@@ -754,10 +754,10 @@ function spawnBoss(ev) {
   }
   g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 6.8 : ev.solo ? 5.5 : 4.5)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 10 : ev.solo ? 5.5 : 4.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
-    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, armyStart: Math.max(1, pl.n), el: tag('boss') });
+    final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
   const wi = bosses.filter(o => !o.final).length;
   banner(final ? '푸바오 등장! 생닭 주의' : wolfCount() > 1 ? `늑구 ${wi}/${wolfCount()} 등장!` : '늑구 등장!');
 }
@@ -827,22 +827,6 @@ function killSoldiers(n) {
 function hurt(tg, dmg) {
   if (tg.dead) return;
   if (!skillHit) addCharge(Math.min(dmg, Math.max(0, tg.hp)) / skillBase());   // 준 피해만큼 스킬 충전 (스킬 피해는 제외)
-  if (tg.final) {
-    // 접전 보정: 보스 체력 비율이 내 병력 비율을 따라가게 해서, 병력이 거의 바닥날 때쯤 보스가 쓰러짐
-    const e = clamp(6 / tg.armyStart + 0.02, 0.03, 0.4);          // 끝날 때 남길 병력 비율 (약 5~6명)
-    const af = clamp(pl.n / tg.armyStart, 0, 1);
-    const tgt = clamp((af - e) / (1 - e), 0, 1);                 // 지금 보스가 가져야 할 체력 비율
-    const bf = tg.hp / tg.max;
-    if (bf > tgt + 0.1) dmg *= 1 + (bf - tgt) * 4;
-    if (af <= e) dmg *= 6;                                        // 마지막 몇 명 남았을 때는 마무리 기회               // 보스가 너무 많이 남았으면 더 아프게
-    const floor = tgt * 0.55;                                     // 내 병력이 많이 남았으면 보스가 버티게
-    // 피해는 그대로 들어감. 기준선 아래로 내려간 만큼은 모아두었다가 치유 스킬로 되돌림
-    tg.healFloor = floor;
-    const below = Math.max(0, floor * tg.max - (tg.hp - dmg));
-    if (floor > 0) tg.healPool = (tg.healPool || 0) + Math.min(dmg, below);
-    // 기준선의 75%까지 깎이면 기다리지 않고 즉시 치유 (체력이 1까지 떨어지지 않게)
-    if (floor > 0 && tg.hp - dmg < floor * tg.max * 0.75) { tg.hp -= dmg; tg.flash = 1; bossHeal(tg); return; }
-  }
   tg.hp -= dmg; tg.flash = 1;
   if (tg.hp > 0) return;
   tg.dead = 0.001;
@@ -858,14 +842,6 @@ function hurt(tg, dmg) {
     boom(tg.x, tg.z, 2.2, 0xff6a2a);
     for (const o of zombies) if (o !== tg && !o.dead && !o.air && Math.hypot(o.x - tg.x, o.z - tg.z) < 2.2) hurt(o, tg.max * 1.5);
   }
-}
-
-function bossHeal(b) {
-  // 모아둔 피해량만큼 회복. 표시는 0.6초에 한 번씩 묶어서
-  const amt = b.healPool || 0;
-  if (amt <= 0) return;
-  b.hp = Math.min(b.max, Math.max(1, b.hp) + amt);
-  b.healShown = (b.healShown || 0) + amt; b.healPool = 0;
 }
 
 function explodeOnArmy(zb) {
@@ -1517,20 +1493,8 @@ function update(dt) {
         for (let k = 0; k < 4; k++) makeZombie(0, h, clamp(b.x + (Math.random() * 2 - 1) * 2.5, -HALF + 0.4, HALF - 0.4), b.z - 1 - Math.random() * 2);
       }
     }
-    // 최종 보스 치유 스킬: 모아둔 피해량만큼 1.5초마다 회복
-    if (b.final && state === 'run') {
-      b.healCd = (b.healCd ?? 0.8) - dt;
-      if (b.healCd <= 0) { b.healCd = 0.8; if (b.healFloor > 0) bossHeal(b); else b.healPool = 0; }
-      b.healShowCd = (b.healShowCd ?? 0) - dt;
-      if (b.healShown > 0 && b.healShowCd <= 0) {
-        popText('치유 +' + Math.round(b.healShown), b.x, 6.5 * b.sc, b.z, '#7dffb0');
-        boom(b.x, b.z, 3.2 * b.sc, 0x4dd68c, 2.5 * b.sc, 0.5);
-        b.healShown = 0; b.healShowCd = 0.6;
-      }
-    }
     // 최종 보스: 몇 초마다 자폭병을 내보냄
     if (b.final && state === 'run') {
-      if (!b.attached) b.armyStart = Math.max(b.armyStart, pl.n);
       if (b.z > -62) {
         b.bombCd -= dt;
         if (b.bombCd <= 0) {
