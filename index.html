@@ -471,6 +471,15 @@ function drawGate(g, k) {
   while (x.measureText(big).width > 226 && fs > 30) { fs -= 4; x.font = fs + 'px "Black Han Sans", sans-serif'; }
   x.fillText(big, 128, small ? 56 : 68);
   if (small) { x.font = '24px "Black Han Sans", sans-serif'; x.globalAlpha = 0.9; x.fillText(small, 128, 104); x.globalAlpha = 1; }
+  if (g.bit && g.bit[k]) {
+    // 물린 자국: 위아래 톱니
+    x.fillStyle = 'rgba(40,44,52,0.9)';
+    for (const [y0, dir] of [[0, 1], [128, -1]]) {
+      x.beginPath(); x.moveTo(0, y0);
+      for (let i = 0; i <= 8; i++) { x.lineTo(i * 32 + 16, y0 + dir * 30); x.lineTo((i + 1) * 32, y0); }
+      x.closePath(); x.fill();
+    }
+  }
   g.meshes[k].material.map.needsUpdate = true;
 }
 const postMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
@@ -798,18 +807,22 @@ function biteOp(op) {
     default: return op;
   }
 }
-function wolfBite(b, g) {
-  g.bitten = true;
+// 물어갈 쪽: 좋은 문 중 더 이득인 쪽 (없으면 -1)
+function biteSide(g) {
   const good = [0, 1].filter(k => opGood(g.ops[k]));
-  if (!good.length) return;
-  // 둘 다 좋으면 더 좋은 쪽을 물어감
-  const k = good.length === 1 ? good[0] : (strength(applyTo(pl, g.ops[0])) >= strength(applyTo(pl, g.ops[1])) ? 0 : 1);
-  g.ops[k] = biteOp(g.ops[k]); g.acc[k] = 0; drawGate(g, k);
-  b.lunge = { x: k ? HALF / 2 : -HALF / 2, t: 0.5 };
+  if (!good.length) return -1;
+  return good.length === 1 ? good[0] : (strength(applyTo(pl, g.ops[0])) >= strength(applyTo(pl, g.ops[1])) ? 0 : 1);
+}
+function wolfBite(b, g, k) {
+  g.bitten = true;
+  if (g.used || !opGood(g.ops[k])) return;
+  g.ops[k] = biteOp(g.ops[k]); g.acc[k] = 0;
+  g.bit = g.bit || [false, false]; g.bit[k] = true; drawGate(g, k);
   const gx = k ? HALF / 2 : -HALF / 2;
-  boom(gx, g.z, 1.6, 0x5f6a74, 1.2, 0.3);
-  popText('늑구가 물어감!', gx, 3.4, g.z, '#ffd0c9');
-  shake = Math.max(shake, 0.2);
+  boom(gx, g.z, 2.2, 0x5f6a74, 1.6, 0.35);
+  popText('콱!', gx, 3.6, g.z, '#ffffff');
+  banner('늑구가 문을 물어뜯었다!');
+  shake = Math.max(shake, 0.35); hitFlash = Math.max(hitFlash, 0.08);
 }
 
 function throwRock(b) {
@@ -966,10 +979,24 @@ function update(dt) {
       b.howl = Math.max(0, b.howl - dt);
       b.mesh.rotation.x = b.howl > 0 ? -0.45 * Math.sin(Math.min(1, b.howl / 1.1) * Math.PI) : 0;
     }
-    if (!b.attached) {
+    if (!b.attached && b.dash) {
+      // 문을 향해 돌진 → 물어뜯고 잠깐 매달림
+      const D = b.dash, gz = D.g.z - 1.8, gx = D.k ? HALF / 2 : -HALF / 2;
+      D.t += dt;
+      if (!D.done) {
+        const q = Math.min(1, D.t / 0.5), e = 1 - (1 - q) * (1 - q);
+        b.z = D.z0 + (gz - D.z0) * e; b.x = D.x0 + (gx - D.x0) * e;
+        b.mesh.rotation.x = -0.25 * Math.sin(q * Math.PI);
+        b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 16 + i * Math.PI) * 0.8);
+        if (q >= 1) { D.done = true; D.t = 0; wolfBite(b, D.g, D.k); }
+      } else {
+        b.z = gz; b.x = gx; b.mesh.rotation.x = 0.2 * Math.sin(D.t * 30);   // 물고 흔들기
+        if (D.t > 0.45 || D.g.used) { b.dash = null; b.biteCd = 3; }
+      }
+      if (b.z >= front - b.reach) { b.dash = null; b.attached = true; }
+    } else if (!b.attached) {
       if (b.howl <= 0) b.z += b.speed * dt;
-      if (b.lunge && b.lunge.t > 0) { b.lunge.t -= dt; b.x += (b.lunge.x - b.x) * Math.min(1, dt * 10); }
-      else b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
+      b.x += Math.sign(cx - b.x) * Math.min(1.2 * dt, Math.abs(cx - b.x));
       b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI * (i < 2 ? 1 : 0.5)) * 0.45);
       if (b.z >= front - b.reach) b.attached = true;
     } else if (state === 'run') {
@@ -978,8 +1005,16 @@ function update(dt) {
       if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : 0.025)))); }
     }
     if (!b.final && state === 'run') {
-      if (b.z > -55) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 3 / lvFoeAtk(); wolfHowl(b); } }
-      for (const g of gates) if (!g.used && !g.bitten && Math.abs(g.z - b.z) < 1.5) wolfBite(b, g);
+      if (b.z > -55 && !b.dash) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 3 / lvFoeAtk(); wolfHowl(b); } }
+      b.biteCd = (b.biteCd ?? 0) - dt;
+      if (!b.dash && !b.attached && b.howl <= 0 && b.biteCd <= 0) {
+        for (const g of gates) {
+          if (g.used || g.bitten || g.z <= b.z + 1 || g.z - b.z > 16 || g.z < -34 || g.z > -9) continue;
+          const k = biteSide(g);
+          if (k < 0) { g.bitten = true; continue; }
+          b.dash = { g, k, t: 0, z0: b.z, x0: b.x }; banner('늑구가 문을 노린다!'); break;
+        }
+      }
     }
     if (b.final && state === 'run' && b.z > -36) {
       b.throwCd -= dt;
