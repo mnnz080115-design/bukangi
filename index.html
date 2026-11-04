@@ -613,14 +613,14 @@ const postMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
 
 let gunScale = { sx: 1, sy: 1, sz: 0.6 };
 // 레벨이 오를수록 우리 부대가 강해짐
-const lvAtk = () => 1 + 0.35 * (level - 1);
-const lvDef = () => Math.max(0.45, 1 - 0.1 * (level - 1));
+const lvAtk = () => 1;   // 레벨 자체 공격 보너스 없음 (강화 탭의 공격력으로만 강해짐)
+const lvDef = () => 1;   // 레벨 자체 방어 보너스 없음 (강화 탭의 방어력으로만)
 function updateHud() {
   const w = WEAPONS[pl.tier];
   document.getElementById('wp').innerHTML =
     `<b>${w.name}</b><span class="pips">${WEAPONS.map((_, i) => `<span class="${i <= pl.tier ? 'on' : ''}"></span>`).join('')}</span>` +
     `<span>연사 ${Math.round(pl.rate * 100)}%</span><span>파워 ${Math.round(pl.pow * 100)}%</span>` +
-    ((level > 1 || stLv('atk') || stLv('def')) ? `<span style="color:var(--army)">공격 +${Math.round((lvAtk() * statAtk() - 1) * 100)}% · 받는 피해 −${Math.round((1 - lvDef() * statDef()) * 100)}%</span>` : '');
+    ((stLv('atk') || stLv('def')) ? `<span style="color:var(--army)">공격 +${Math.round((lvAtk() * statAtk() - 1) * 100)}% · 받는 피해 −${Math.round((1 - lvDef() * statDef()) * 100)}%</span>` : '');
   const [sx, sy, sz] = w.gun; gunMat.color.set(pl.tier === 2 ? 0x4b5a3a : 0x222831);
   gunScale = { sx, sy, sz };
 }
