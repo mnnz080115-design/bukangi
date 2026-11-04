@@ -662,7 +662,7 @@ function buildLevel() {
   clearLevel();
   levelGroup = new THREE.Group(); scene.add(levelGroup);
   gates = []; zombies = []; bullets = []; ebullets = []; events = []; bosses = []; waves = [];
-  pl = { n: 20 + level * 4, tier: stLv('gun'), rate: 1, pow: 1 };
+  pl = { n: 20 + level * 4, tier: 0, rate: 1, pow: 1 };
   regenAcc = 0; regenFrac = 0;
   diff = diffStart; lost = 0;
   let s = { ...pl };
@@ -1024,10 +1024,11 @@ const STATS = [
   { id: 'atk',   icon: '🦷', name: '공격력',   max: 20, cost: l => Math.round(50 * Math.pow(1.25, l)),  eff: l => `피해 +${l * 8}%` },
   { id: 'def',   icon: '🛡️', name: '방어력',   max: 15, cost: l => Math.round(60 * Math.pow(1.28, l)),  eff: l => `받는 피해 −${l * 4}%` },
   { id: 'regen', icon: '💧', name: '재생',     max: 6,  cost: l => Math.round(120 * Math.pow(1.6, l)),  eff: l => l ? `3초마다 병력 +${(l * 0.5).toFixed(1)}%` : '없음' },
-  { id: 'gun',   icon: '🔫', name: '시작 총기', max: 2,  cost: l => [300, 1200][l],                      eff: l => WEAPONS[l].name + '로 시작' },
   { id: 'coin',  icon: '🪙', name: '코인 보너스', max: 10, cost: l => Math.round(80 * Math.pow(1.4, l)), eff: l => `코인 +${l * 10}%` },
 ];
 const stLv = id => (save.stats && save.stats[id]) || 0;
+// '시작 총기' 강화는 삭제됨: 이미 산 경우 코인 돌려줌
+if (save.stats && save.stats.gun) { save.coins += [0, 300, 1500][save.stats.gun] || 0; delete save.stats.gun; try { localStorage.setItem('bukangi-save-v1', JSON.stringify(save)); } catch (e) {} }
 const statAtk = () => 1 + 0.08 * stLv('atk');
 const statDef = () => 1 - 0.04 * stLv('def');
 let regenAcc = 0, regenFrac = 0;
