@@ -665,7 +665,7 @@ function buildLevel() {
   levelGroup = new THREE.Group(); scene.add(levelGroup);
   gates = []; zombies = []; bullets = []; ebullets = []; events = []; bosses = []; waves = [];
   pl = { n: 20 + level * 4, tier: 0, rate: 1, pow: 1 };
-  regenAcc = 0; regenFrac = 0; halted = false;
+  regenAcc = 0; regenFrac = 0; halted = false; lastGateT = 0;
   diff = diffStart; lost = 0;
   let s = { ...pl };
   const SECTIONS = 6;
@@ -748,6 +748,7 @@ function spawnGate(ev) {
   [-HALF, 0, HALF].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, 3.1, 0.25), postMat); p.position.set(x, 1.55, 0); g.group.add(p); });
   g.group.position.z = g.z; levelGroup.add(g.group); gates.push(g);
   if (pendingGold) { makeGold(g, pendingGold); pendingGold = null; }
+  lastGateT = clock;
 
   // 문 파괴범: 숫자형 문 쪽에 붙어서 숫자를 깎음
   if (ev.breaker) {
@@ -1317,14 +1318,14 @@ function resetSkills() {
 document.getElementById('skillBtn').addEventListener('click', castSkill);
 addEventListener('keydown', e => { if (e.code === 'Space' && state === 'run') { e.preventDefault(); castSkill(); } });
 
-let halted = false;   // 늑구가 살아 있는 동안 전진 멈춤
+let halted = false, lastGateT = 0;   // 늑구가 살아 있는 동안 전진 멈춤
 function update(dt) {
   if (state === 'menu') return;
   // 늑구 보스전: 늑구가 살아 있으면 다음 웨이브·보스가 나오지 않음 (문은 계속 옴)
   const wolfAlive = state === 'run' && bosses.some(b => b.wolf && !b.dead);
   if (wolfAlive !== halted) {
     halted = wolfAlive;
-    if (state === 'run') banner(halted ? '늑구 등장! 적 증원 멈춤' : '늑구 처치! 전진!');
+    if (state === 'run' && halted) banner('늑구 등장!');
   }
   scroll += SCROLL * dt;
   if (state === 'run') {
@@ -1332,6 +1333,12 @@ function update(dt) {
     // 늑구가 살아 있는 동안: 문은 계속 오고, 다음 웨이브·늑구·푸바오는 늑구를 쓰러뜨릴 때까지 미룸
     if (halted) { for (const e of events) if (e.kind !== 'gate') e.t += dt; totalTime += dt; }
     for (let i = 0; i < events.length;) { if (events[i].t <= clock) spawn(events.splice(i, 1)[0]); else i++; }
+    // 문은 푸바오가 나오기 전까지 계속: 예정된 문이 다 나왔으면 10초마다 새 문
+    if (!events.some(e => e.kind === 'gate') && !bosses.some(b => b.final) && clock - lastGateT >= 10) {
+      const pair = makePair(5, pl);
+      if (Math.random() < 0.2) pair[Math.random() < 0.5 ? 0 : 1] = { t: 'rand' };
+      spawnGate({ ops: Math.random() < 0.5 ? pair : [pair[1], pair[0]], ei: 5 + level - 1 });
+    }
     const mv = (keys['arrowleft'] || keys['a'] ? -1 : 0) + (keys['arrowright'] || keys['d'] ? 1 : 0);
     cx += mv * 11 * dt;
     fire(dt);
