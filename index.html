@@ -1117,12 +1117,12 @@ function rollGold(lv) {
   return 4;
 }
 // 황금문 종류: 배수 55% · 파워 15% · 연사 15% · 총기 최고 단계 15%
-// 파워·연사 수치도 배수와 같은 확률표로 정해짐 (×4 자리 → +60%, … ×9 자리 → +200%)
+// 파워·연사 수치도 배수와 같은 확률표로 정해짐 (×4 자리 → +200%, … ×9 자리 → +500%)
 function rollGoldOp(lv) {
   const i = GOLD_MULTS.indexOf(rollGold(lv)), r = Math.random();
   if (r < 0.55) return { t: 'mul', v: GOLD_MULTS[i], gold: true };
-  if (r < 0.70) return { t: 'pow', v: [60, 80, 100, 130, 160, 200][i], gold: true };
-  if (r < 0.85) return { t: 'rate', v: [60, 80, 100, 130, 160, 200][i], gold: true };
+  if (r < 0.70) return { t: 'pow', v: [200, 250, 300, 350, 400, 500][i], gold: true };
+  if (r < 0.85) return { t: 'rate', v: [200, 250, 300, 350, 400, 500][i], gold: true };
   return { t: 'wmax', gold: true };
 }
 let pendingGold = null;   // 화면에 문이 없을 때: 다음에 나오는 문을 황금문으로
@@ -1949,7 +1949,7 @@ function renderHub() {
   document.getElementById('skDetail').innerHTML =
     `<h3>${ok ? k.icon : '🔒'} ${cur.n}</h3>` +
     `<div class="lvpips" aria-label="레벨 ${lv}/5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= lv ? 'on' : ''}"></i>`).join('')}</div>` +
-    `<p>${cur.d}</p>` + (k.id === 'gold' && lv ? `<p>배수 확률: ${GOLD_MULTS.map((m, i) => `×${m} ${GOLD_ODDS[lv][i]}%`).join(' · ')}<br>파워·연사 황금문도 같은 확률로 +60% ~ +200%</p>` : '') + `<p>적에게 피해를 줄수록 충전 · 충전 속도 ${k.need <= 4 ? '빠름' : k.need <= 5 ? '보통' : '느림'}</p>` +
+    `<p>${cur.d}</p>` + (k.id === 'gold' && lv ? `<p>배수 확률: ${GOLD_MULTS.map((m, i) => `×${m} ${GOLD_ODDS[lv][i]}%`).join(' · ')}<br>파워·연사 황금문도 같은 확률로 +200% ~ +500%</p>` : '') + `<p>적에게 피해를 줄수록 충전 · 충전 속도 ${k.need <= 4 ? '빠름' : k.need <= 5 ? '보통' : '느림'}</p>` +
     (ok && nxt ? `<p class="nx">다음 Lv.${lv + 1}: <b>${nxt.n}</b> — ${nxt.d}${k.id === 'gold' ? ` (${GOLD_MULTS.map((m, i) => `×${m} ${GOLD_ODDS[lv + 1][i]}%`).join(' · ')})` : ''}</p>` : '') +
     (ok ? `<div class="skbtns"><button class="gold" id="upBtn" ${!nxt || save.coins < cost ? 'disabled' : ''}>${nxt ? `업그레이드 🪙${cost}` : '최대 레벨'}</button>` +
       `<button id="eqBtn" ${k.id === save.equip ? 'disabled' : ''}>${k.id === save.equip ? '장착 중' : '선택'}</button></div>`
