@@ -796,12 +796,12 @@ function spawnBoss(ev) {
 }
 
 // 푸바오 소환수
-//  루이바오·후이바오: 둘이 한 번에 나옴. 멀찍이 멈춰 서서 생닭을 던짐. 체력은 각각 푸바오의 60%
-//  아이바오: 푸바오가 분노할 때 한 번 등장. 역대급 체력(푸바오의 120%). 한 줄을 천천히 굴러오며 깔린 부캉이는 100% 사망
+//  루이바오·후이바오(푸바오 동생): 둘이 한 번에 나옴. 멀찍이 멈춰 서서 생닭을 던짐. 체력은 각각 푸바오의 50%, 방어력 없음
+//  아이바오(푸바오 엄마): 푸바오가 분노할 때 한 번 등장. 체력 푸바오의 200%, 방어력 35%. 한 줄을 굴러오며 깔린 부캉이는 100% 사망
 const SUMMON = {
-  rui: { name: '루이바오', hp: 0.8, armor: 0.15, scale: 0.85, tint: 0xffe3ec },
-  hui: { name: '후이바오', hp: 0.8, armor: 0.15, scale: 0.85, tint: 0xe3eeff },
-  ai:  { name: '아이바오', hp: 1.5, armor: 0.25, scale: 1.25, tint: null },
+  rui: { name: '루이바오', hp: 0.5, armor: 0, scale: 0.8, tint: 0xffe3ec },
+  hui: { name: '후이바오', hp: 0.5, armor: 0, scale: 0.8, tint: 0xe3eeff },
+  ai:  { name: '아이바오', hp: 2.0, armor: 0.35, scale: 1.35, tint: null },
 };
 function spawnSummon(p, kind, x) {
   const S = SUMMON[kind], model = buildPanda(), { g: body, mat, eyeM, arms } = model;
@@ -1516,7 +1516,7 @@ function update(dt) {
     if (b.final && !b.phase2 && b.hp < b.max * 0.5) {
       b.phase2 = true; b.speed *= 1.8; b.summonCd = 0.3;
       b.eyeM.color.set(0xff2020); b.base.set(0xf2b4aa); b.el.classList.add('rage');
-      banner('푸바오 분노! 아이바오 소환');
+      banner('푸바오 분노! 엄마 아이바오 등장');
       spawnSummon(b, 'ai', b.x);
     }
     if (b.final && !b.phase3 && b.hp < b.max * 0.25) {
@@ -1528,7 +1528,7 @@ function update(dt) {
     // 루이바오·후이바오: 멈춰 서서 생닭 2마리씩 던짐
     if ((b.summon === 'rui' || b.summon === 'hui') && state === 'run' && b.z > -45) {
       b.throwC -= dt;
-      if (b.throwC <= 0) { b.throwC = 3.5 / lvFoeAtk(); chickenBarrage(b, 2, true); b.arms.forEach(a => a.rotation.x = -2.2); }
+      if (b.throwC <= 0) { b.throwC = 5 / lvFoeAtk(); chickenBarrage(b, 1, true); b.arms.forEach(a => a.rotation.x = -2.2); }
       else b.arms.forEach(a => a.rotation.x *= 1 - Math.min(1, dt * 5));
     }
     // 아이바오: 한 줄을 천천히 굴러옴. 지나가는 자리에 깔린 부캉이는 100% 사망. 다 지나가면 다시 뒤로 가서 반복
@@ -1538,18 +1538,18 @@ function update(dt) {
         b.z += (-30 - b.z) * Math.min(1, dt * 2); b.x += (0 - b.x) * Math.min(1, dt * 2);
         b.pivot.rotation.x *= 1 - Math.min(1, dt * 6); b.pivot.scale.set(1, 1, 1);
         b.walk.forEach((l, i) => l.rotation.x = Math.sin(clock * 7 + i * Math.PI) * 0.4);
-        if (A.t > 1.6) { A.ph = 'aim'; A.t = 0; A.lx = clamp(cx + (Math.random() * 2 - 1) * 0.6, -HALF + AI_W / 2, HALF - AI_W / 2); banner('아이바오 구르기!'); }
+        if (A.t > 1.3) { A.ph = 'aim'; A.t = 0; A.lx = clamp(cx + (Math.random() * 2 - 1) * 0.6, -HALF + AI_W / 2, HALF - AI_W / 2); banner('아이바오 구르기!'); }
       } else if (A.ph === 'aim') {
-        const q = Math.min(1, A.t / 1.6);
+        const q = Math.min(1, A.t / 1.3);
         b.x += (A.lx - b.x) * Math.min(1, dt * 6);
         b.pivot.scale.set(1 + 0.15 * q, 1 - 0.3 * q, 1 + 0.15 * q); b.pivot.rotation.x = 0.7 * q;
         const z1 = b.z + 2, z2 = BAMBOO_END, len = Math.max(1, z2 - z1);
         aiStripe.visible = true; aiStripe.scale.set(1, len, 1); aiStripe.position.set(A.lx, 0.06, (z1 + z2) / 2);
         aiStripe.material.opacity = 0.3 + 0.35 * Math.abs(Math.sin(A.t * 10));
-        if (A.t >= 1.6) { A.ph = 'roll'; A.t = 0; }
+        if (A.t >= 1.3) { A.ph = 'roll'; A.t = 0; }
       } else if (A.ph === 'roll') {
-        const z0 = b.z; b.z += 9 * dt * sf; b.x = A.lx;   // 천천히 굴러옴
-        b.pivot.rotation.x += 9 * dt / (2.1 * b.sc); b.pivot.scale.set(1.15, 0.8, 1.15);
+        const z0 = b.z; b.z += 10.5 * dt * sf; b.x = A.lx;   // 천천히 굴러옴
+        b.pivot.rotation.x += 10.5 * dt / (2.1 * b.sc); b.pivot.scale.set(1.15, 0.8, 1.15);
         aiStripe.material.opacity = 0.6;
         const vis = Math.min(pl.n, MAX_ARMY); let c = 0;
         for (let i = 0; i < vis; i++) { const [x, z] = soldierPos(i); if (Math.abs(x - A.lx) < AI_W / 2 + 0.2 && z > z0 + 1.2 && z <= b.z + 1.2) c++; }
@@ -1567,7 +1567,7 @@ function update(dt) {
       if (b.pairCd <= 0 && !bosses.some(o => (o.summon === 'rui' || o.summon === 'hui') && !o.dead)) {
         b.pairCd = 14 / lvFoeAtk();
         spawnSummon(b, 'rui', clamp(b.x - 2.6, -HALF + 1, HALF - 1)); spawnSummon(b, 'hui', clamp(b.x + 2.6, -HALF + 1, HALF - 1));
-        banner('루이바오·후이바오 소환!'); boom(b.x, b.z, 6, 0xefeadf, 3, 0.5);
+        banner('동생 루이바오·후이바오 등장!'); boom(b.x, b.z, 6, 0xefeadf, 3, 0.5);
       }
     }
     // 푸바오 대나무 던지기: 경고 줄 → 대나무를 들어 던짐 → 그 줄을 굴러와 줄 안 병력 30~50% 날림
