@@ -1725,8 +1725,8 @@ function update(dt) {
       const pts = Math.floor(g.acc[tg.k] / cost);
       if (pts > 0) {
         g.acc[tg.k] -= pts * cost;
-        // 상한: 숫자 문은 현재 병력만큼(최대 2배까지), 연사·파워 문은 +100%까지
-        const cap = op.t === 'add' ? Math.max(30, pl.n) : 100;
+        // 상한: 숫자 문은 현재 병력의 2배까지(지나가면 최대 3배), 연사·파워 문은 +200%까지
+        const cap = op.t === 'add' ? Math.max(60, pl.n * 2) : 200;
         const nv = Math.min(cap, op.v + pts);
         if (nv !== op.v) { op.v = nv; drawGate(g, tg.k); }
       }
