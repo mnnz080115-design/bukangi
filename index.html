@@ -771,10 +771,10 @@ function spawnBoss(ev) {
   }
   g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 10 : ev.solo ? 5.5 : 4.5)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 13 : ev.solo ? 5.5 : 4.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
-    final, wolf: !final, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
+    final, wolf: !final, armor: final ? 0.2 : 0, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
   const wi = bosses.filter(o => o.wolf).length;
   banner(final ? '푸바오 등장! 생닭 주의' : wolfCount() > 1 ? `늑구 ${wi}/${wolfCount()} 등장!` : '늑구 등장!');
 }
@@ -783,9 +783,9 @@ function spawnBoss(ev) {
 //  루이바오·후이바오: 둘이 한 번에 나옴. 멀찍이 멈춰 서서 생닭을 던짐. 체력은 각각 푸바오의 60%
 //  아이바오: 푸바오가 분노할 때 한 번 등장. 역대급 체력(푸바오의 120%). 한 줄을 천천히 굴러오며 깔린 부캉이는 100% 사망
 const SUMMON = {
-  rui: { name: '루이바오', hp: 0.6, scale: 0.85, tint: 0xffe3ec },
-  hui: { name: '후이바오', hp: 0.6, scale: 0.85, tint: 0xe3eeff },
-  ai:  { name: '아이바오', hp: 1.2, scale: 1.25, tint: null },
+  rui: { name: '루이바오', hp: 0.8, armor: 0.15, scale: 0.85, tint: 0xffe3ec },
+  hui: { name: '후이바오', hp: 0.8, armor: 0.15, scale: 0.85, tint: 0xe3eeff },
+  ai:  { name: '아이바오', hp: 1.5, armor: 0.25, scale: 1.25, tint: null },
 };
 function spawnSummon(p, kind, x) {
   const S = SUMMON[kind], model = buildPanda(), { g: body, mat, eyeM, arms } = model;
@@ -796,7 +796,7 @@ function spawnSummon(p, kind, x) {
   if (S.tint) mat.color.set(S.tint);
   const hp = Math.max(20, Math.round(p.max * S.hp));
   const b = { x, z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, pivot, arms, walk: model.walk, reach: model.reach * S.scale / 1.0, flashCol: model.flashCol, mat, eyeM, base: mat.color.clone(),
-    flash: 0, dead: 0, final: false, summon: kind, name: S.name, owner: p, sc: S.scale, howl: 0, speed: BOSS_SPEED * 1.7 * lvFoeSpd(), el: tag('boss mid'),
+    flash: 0, dead: 0, armor: S.armor, final: false, summon: kind, name: S.name, owner: p, sc: S.scale, howl: 0, speed: BOSS_SPEED * 1.7 * lvFoeSpd(), el: tag('boss mid'),
     stopZ: kind === 'ai' ? 0 : -20 - Math.random() * 4, throwC: 1.5 + Math.random(), ai: kind === 'ai' ? { ph: 'enter', t: 0 } : null };
   bosses.push(b);
   boom(x, z, 2.8, 0xefeadf, 2, 0.45);
@@ -876,6 +876,7 @@ function killSoldiers(n, pierce) {
 
 function hurt(tg, dmg) {
   if (tg.dead) return;
+  if (tg.armor) dmg *= 1 - tg.armor;   // 보스 방어력: 받는 피해 감소
   if (!skillHit) addCharge(Math.min(dmg, Math.max(0, tg.hp)) / skillBase());   // 준 피해만큼 스킬 충전 (스킬 피해는 제외)
   tg.hp -= dmg; tg.flash = 1;
   if (tg.hp > 0) return;
@@ -1465,7 +1466,7 @@ function update(dt) {
       spawnSummon(b, 'ai', b.x);
     }
     if (b.final && !b.phase3 && b.hp < b.max * 0.25) {
-      b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2;
+      b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2; b.armor = 0.35;   // 각성: 방어력 상승
       b.eyeM.color.set(0xffee55); b.base.set(0xffd9a8); b.el.classList.add('awake');
       boom(b.x, b.z, 7, 0xffd54a, 3, 0.6); shake = Math.max(shake, 0.5);
       banner('푸바오 각성!');
