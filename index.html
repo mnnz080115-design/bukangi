@@ -240,11 +240,11 @@ const W = 10, HALF = W / 2;
 const SCROLL = 6, ZOMBIE_SPEED = 6.5, BOSS_SPEED = 2.4, SPAWN_Z = -75, RANGE = 42;
 const FOE_HP = 1;
 // 레벨이 오를수록 적도 강해짐 (우리 팀 레벨 보너스보다 조금 더 빠르게)
-const lvFoeHp = () => 1 + 0.32 * (level - 1);
-const lvBossHp = () => 1 + 0.2 * (level - 1);                    // 보스(늑구·푸바오) 추가 체력 배율
+const lvFoeHp = () => 1 + 0.08 * (level - 1);
+const lvBossHp = () => 1 + 0.06 * (level - 1);                   // 보스(늑구·푸바오) 추가 체력 배율
 const wolfCount = () => Math.min(3, 1 + Math.floor(level / 2));   // 레벨별 늑구 마리 수: 1,2,2,3 (이후 3마리 고정, 체력만 증가)
 const lvFoeSpd = () => Math.min(1.4, 1 + 0.05 * (level - 1));
-const lvFoeAtk = () => 1 + 0.15 * (level - 1);   // 적 전체 체력 배율
+const lvFoeAtk = () => 1 + 0.08 * (level - 1);   // 적 전체 체력 배율
 const ADD_COST = 3, PCT_COST = 5;
 const WEAPONS = [
   { name: '권총',    rate: 0.6,  power: 1,   speed: 48, size: 1.0, color: 0xffd23f, splash: 0,   vis: 70, gun: [1, 1, 0.6] },
