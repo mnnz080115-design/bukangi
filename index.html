@@ -786,7 +786,7 @@ function spawnBoss(ev) {
   }
   g.position.set(0, 0, SPAWN_Z); levelGroup.add(g);
   const P = strength(pl) * diff;
-  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 13 : ev.solo ? 5.5 : 4.5)));
+  const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 9 : ev.solo ? 5.5 : 4.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
     final, wolf: !final, armor: final ? 0.2 : 0, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
@@ -1648,7 +1648,7 @@ function update(dt) {
     } else if (state === 'run') {
       b.z = front - b.reach; b.atk += dt;
       b.arms.forEach((a, i) => a.rotation.x = -Math.abs(Math.sin(b.atk * 8 + i)) * 1.2);
-      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.04 : b.summon ? 0.035 : 0.025)))); }
+      if (b.atk >= 0.45) { b.atk = 0; killSoldiers(Math.max(1, Math.ceil(pl.n * (b.final ? 0.02 : b.summon ? 0.035 : 0.025)))); }
     }
     if (b.wolf && state === 'run') {
       if (b.z > -55 && !b.dash) { b.howlCd -= dt; if (b.howlCd <= 0) { b.howlCd = 8 / lvFoeAtk(); wolfHowl(b); } }
@@ -1723,7 +1723,13 @@ function update(dt) {
       if (!shootable(op)) continue;   // 쏘는 사이 황금문·늑구 등으로 바뀐 문은 숫자가 안 오름
       g.acc[tg.k] += bl.dmg;
       const pts = Math.floor(g.acc[tg.k] / cost);
-      if (pts > 0) { g.acc[tg.k] -= pts * cost; op.v += pts; drawGate(g, tg.k); }
+      if (pts > 0) {
+        g.acc[tg.k] -= pts * cost;
+        // 상한: 숫자 문은 현재 병력만큼(최대 2배까지), 연사·파워 문은 +100%까지
+        const cap = op.t === 'add' ? Math.max(30, pl.n) : 100;
+        const nv = Math.min(cap, op.v + pts);
+        if (nv !== op.v) { op.v = nv; drawGate(g, tg.k); }
+      }
     } else {
       tg.incoming -= bl.dmg;
       let dmg = bl.dmg;
