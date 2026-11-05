@@ -225,6 +225,42 @@ button.ghost:active{box-shadow:0 2px 0 #b5c4d6}
 .skdetail{background:#fff;border:2px solid #e6e0d2;border-radius:16px}
 .skbtns button.gold,.st button{background:linear-gradient(180deg,#ffd257,#f2a90f 55%,#e59a00);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 4px 0 #a86f00}
 .skbtns button:disabled,.st button:disabled{color:#8a8475;text-shadow:none;background:#e2ddd1;box-shadow:0 4px 0 #bdb5a3}
+
+/* ===== 레벨 탭: 듀오링고식 길 ===== */
+#hub{grid-template-rows:minmax(0,1fr)}
+.hub{min-height:0}
+.sheet{padding-top:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.sheethd{position:sticky;top:0;z-index:4;display:grid;gap:10px;margin:0 -14px;padding:16px 14px 10px;background:var(--cream);border-radius:20px 20px 0 0}
+.zonebar{display:grid;gap:2px;padding:12px 16px 13px;border-radius:16px;color:#fff;text-shadow:0 1px 0 rgba(0,0,0,.18);background:var(--zc);box-shadow:0 5px 0 var(--zd);transition:background .25s,box-shadow .25s}
+.zonebar small{font-size:13px;font-weight:800;opacity:.85}
+.zonebar b{font-family:var(--font-ui);font-weight:900;font-size:21px;line-height:1.2}
+.z0{--zc:#3fbf5c;--zd:#2a8f43;--zt:#1f7a37}
+.z1{--zc:#2f7ff0;--zd:#1b56b8;--zt:#1a4fae}
+.z2{--zc:#14b1c8;--zd:#0c8497;--zt:#0a7385}
+.lvpath{display:grid;justify-items:center;padding:14px 0 28px}
+.unit{width:100%;display:flex;align-items:center;gap:12px;margin:26px 0 22px;color:#8b8577;font-weight:800;font-size:15px;white-space:nowrap}
+.unit::before,.unit::after{content:"";flex:1;height:2px;background:#e3dccc;border-radius:2px}
+.nrow{position:relative;translate:var(--x) 0;display:grid;justify-items:center;gap:14px;margin:6px 0}
+.hubhero{height:clamp(170px,27vh,240px)}
+.node{width:76px;height:68px;padding:0;border-radius:50%;display:grid;place-items:center;border:0;color:#fff;
+  background:var(--zc);box-shadow:inset 0 -6px 0 rgba(0,0,0,.08),inset 0 4px 0 rgba(255,255,255,.28),0 8px 0 var(--zd)}
+.node:active{translate:0 5px;box-shadow:inset 0 4px 0 rgba(255,255,255,.28),0 3px 0 var(--zd)}
+.node svg{width:34px;height:34px}
+.node:disabled{background:#d9dde2;box-shadow:inset 0 4px 0 rgba(255,255,255,.4),0 8px 0 #b6bcc4;cursor:default}
+.node:disabled:active{translate:none}
+.nlab{font-family:var(--font-ui);font-weight:900;font-size:14px;color:var(--zt)}
+.nrow.lock .nlab{color:#a5abb3}
+.nrow.next{margin-top:58px}
+.nrow.next::before{content:"";position:absolute;left:50%;top:-9px;width:96px;height:96px;translate:-50% 0;border-radius:50%;
+  background:conic-gradient(var(--zc) 0 100%);-webkit-mask:radial-gradient(circle,transparent 42px,#000 43px);mask:radial-gradient(circle,transparent 42px,#000 43px);opacity:.35;animation:ring 1.6s ease-in-out infinite}
+.nrow.next .node{width:82px;height:74px}
+.bub{position:absolute;bottom:calc(100% + 18px);left:50%;translate:-50% 0;white-space:nowrap;padding:9px 16px;border-radius:14px;background:#fff;color:var(--zt);
+  font-family:var(--font-ui);font-weight:900;font-size:17px;border:2px solid #e3dccc;box-shadow:0 3px 0 #e3dccc;animation:bob 1.3s ease-in-out infinite;pointer-events:none}
+.bub::after{content:"";position:absolute;left:50%;top:100%;width:12px;height:12px;translate:-50% -5px;rotate:45deg;background:#fff;border-right:2px solid #e3dccc;border-bottom:2px solid #e3dccc}
+@keyframes bob{50%{translate:-50% -6px}}
+@keyframes ring{50%{scale:1.08;opacity:.2}}
+.pathend{margin-top:22px;color:#a39c8c;font-weight:800;font-size:14px}
+@media (prefers-reduced-motion:reduce){.bub,.nrow.next::before{animation:none}}
 @media (max-width:350px){.lvgrid button{min-height:116px;font-size:21px}.lvgrid button small{font-size:14px}}
 @media (max-height:640px){.ts .tagline{display:none}}
 @media (prefers-reduced-motion:reduce){.pop,.banner,#skillBtn.ready,.lvgrid button.next .ic{animation-duration:.01s}}
@@ -276,12 +312,15 @@ button.ghost:active{box-shadow:0 2px 0 #b5c4d6}
       <div class="hubtop"><h2>부캉이 기지</h2><span class="coins"><i class="coin-ic"></i><b id="coinN">0</b></span></div>
     </div>
     <div class="sheet">
+    <div class="sheethd">
     <div class="tabs" role="tablist">
       <button class="on" data-tab="lv" role="tab">레벨</button>
       <button data-tab="sk" role="tab">스킬</button>
       <button data-tab="st" role="tab">강화</button>
     </div>
-    <div id="tabLv"><div class="lvgrid" id="lvGrid"></div></div>
+    <div class="zonebar z0" id="zoneBar"><small></small><b></b></div>
+    </div>
+    <div id="tabLv"><div class="lvpath" id="lvGrid"></div></div>
     <div id="tabSt" hidden><div class="stlist" id="stList"></div></div>
     <div id="tabSk" hidden>
       <div class="sklist" id="skList"></div>
@@ -2255,10 +2294,27 @@ const IC_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5V
 function openHub() {
   ['menu', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
   if (state !== 'menu') { buildLevel(); state = 'menu'; }
-  document.getElementById('hub').hidden = false;
+  document.getElementById('hub').hidden = false; hubScroll = true;
   document.querySelector('.hud').hidden = true;
   renderHub();
 }
+// 레벨 길 아이콘(흰색)
+const NI_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const NI_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.5v13l10-6.5z" fill="#fff" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+const NI_LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="#9aa1aa" stroke-width="2.6"/><rect x="4.5" y="10.5" width="15" height="11" rx="2.5" fill="#9aa1aa"/></svg>';
+let hubScroll = true;
+// 맨 위 구역 배너: 지금 보이는 레벨의 구역으로 바뀜
+function updZone() {
+  const bar = document.getElementById('zoneBar'), sh = document.querySelector('.sheet');
+  if (bar.hidden) return;
+  const lim = bar.getBoundingClientRect().bottom + 8;
+  const row = [...document.querySelectorAll('#lvGrid .nrow')].find(r => r.getBoundingClientRect().bottom > lim);
+  const zi = row ? +row.dataset.z : 0, t = THEMES[zi];
+  bar.className = 'zonebar z' + zi;
+  bar.querySelector('small').textContent = `구역 ${zi + 1} · LV ${zi * 4 + 1}${zi === THEMES.length - 1 ? '~' : '–' + (zi * 4 + 4)}`;
+  bar.querySelector('b').textContent = `${t.icon} ${t.name}`;
+}
+document.querySelector('.sheet').addEventListener('scroll', updZone, { passive: true });
 function renderHub() {
   SKILLS.forEach(k => { if (unlocked(k) && !save.skills[k.id]) save.skills[k.id] = 1; });
   document.getElementById('coinN').textContent = save.coins;
@@ -2271,16 +2327,28 @@ function renderHub() {
     return `<div class="st"><span class="ic">${t.icon}</span><span><b>${t.name}</b> <small>Lv.${l}/${t.max} · ${t.eff(l)}${mx ? '' : ` → <i>${t.eff(l + 1)}</i>`}</small></span>` +
       `<button data-st="${t.id}" ${mx || save.coins < c ? 'disabled' : ''}>${mx ? '최대' : '🪙' + c}</button></div>`;
   }).join('');
-  // 레벨: 깬 레벨 + 다음 레벨까지 열림, 그 뒤 3개는 잠금으로 보여줌 (무한)
-  const open = save.maxClear + 1;
+  // 레벨: 듀오링고식 길. 깬 레벨 + 다음 레벨까지 열림, 구역 끝(또는 3개 더)까지 잠금으로 보여줌 (무한)
+  const open = save.maxClear + 1, oz = themeIdx(open);
+  const last = Math.max(open + 3, oz < THEMES.length - 1 ? (oz + 1) * 4 : 0);
+  const SWAY = [0, 1, 2, 1, 0, -1, -2, -1];
   let h = '';
-  for (let n = 1; n <= open + 3; n++) {
-    if (n <= save.maxClear) h += `<button class="done" data-lv="${n}">LV ${n}<span class="ic">${IC_CHECK}</span><small>클리어</small></button>`;
-    else if (n === open) h += `<button class="next" data-lv="${n}">LV ${n}<span class="ic">${IC_PLAY}</span><small>도전!</small></button>`;
-    else h += `<button disabled>LV ${n}<span class="ic">${IC_LOCK}</span><small>잠김</small></button>`;
+  for (let n = 1; n <= last; n++) {
+    const zi = themeIdx(n), t = THEMES[zi];
+    if (n > 1 && (n - 1) % 4 === 0 && n <= THEMES.length * 4) h += `<div class="unit">${t.icon} ${t.name}</div>`;
+    const x = SWAY[(n - 1) % 8] * 42, st = n <= save.maxClear ? 'done' : n === open ? 'next' : 'lock';
+    h += `<div class="nrow z${zi} ${st}" data-z="${zi}" style="--x:${x}px">` +
+      (st === 'next' ? `<span class="bub">LV ${n} 도전!</span>` : '') +
+      `<button class="node" ${st === 'lock' ? 'disabled' : `data-lv="${n}"`} aria-label="LV ${n} ${st === 'done' ? '클리어' : st === 'next' ? '도전' : '잠김'}">${st === 'done' ? NI_CHECK : st === 'next' ? NI_PLAY : NI_LOCK}</button>` +
+      `<b class="nlab">LV ${n}</b></div>`;
   }
+  h += `<div class="pathend">🌊 더 넓은 바다로…</div>`;
   const grid = document.getElementById('lvGrid'); grid.innerHTML = h;
-  const nx = grid.querySelector('.next'); if (nx && hubTab === 'lv') nx.scrollIntoView({ block: 'nearest' });
+  document.getElementById('zoneBar').hidden = hubTab !== 'lv';
+  if (hubTab === 'lv' && hubScroll) { hubScroll = false; requestAnimationFrame(() => {
+    const sh = document.querySelector('.sheet'), nx = grid.querySelector('.nrow.next');
+    if (nx) sh.scrollTop += nx.getBoundingClientRect().top - sh.getBoundingClientRect().top - sh.clientHeight * 0.45;
+    updZone();
+  }); } else updZone();
   // 스킬 목록
   document.getElementById('skList').innerHTML = SKILLS.map(k => {
     const lv = skillLv(k.id), ok = unlocked(k);
@@ -2303,7 +2371,7 @@ function renderHub() {
   if (up) up.onclick = () => { if (save.coins < cost || !nxt) return; save.coins -= cost; save.skills[k.id] = lv + 1; persist(); renderHub(); };
   if (eq) eq.onclick = () => { save.equip = k.id; persist(); renderHub(); };
 }
-document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { hubTab = b.dataset.tab; renderHub(); } });
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { if (b.dataset.tab === 'lv' && hubTab !== 'lv') hubScroll = true; hubTab = b.dataset.tab; renderHub(); } });
 document.getElementById('lvGrid').addEventListener('click', e => { const b = e.target.closest('button[data-lv]'); if (b) { level = +b.dataset.lv; start(); } });
 document.getElementById('stList').addEventListener('click', e => {
   const b = e.target.closest('button[data-st]'); if (!b) return;
