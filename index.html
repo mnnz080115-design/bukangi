@@ -132,6 +132,11 @@ details.howto[open]{display:grid;gap:10px}
 .skbtns button{font-size:17px;padding:10px}
 .skbtns button.gold{background:#e0a400;box-shadow:0 4px 0 #9a7000}
 .skbtns button:disabled{background:#d7d1c2;color:#8a8475;box-shadow:0 4px 0 #b9b2a2;cursor:default}
+.banner.zone{background:linear-gradient(180deg,#3f8fff,#1a58d6);box-shadow:0 4px 0 #0f43a8}
+.zonehd{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-family:var(--font-ui);font-weight:900;font-size:16px;color:var(--navy);margin-top:4px}
+.zonehd:first-child{margin-top:0}
+.zonehd small{font-size:12.5px;color:var(--muted);font-weight:700}
+.zonehd::after{content:"";flex:1;height:2px;background:#e6e0d2;border-radius:2px}
 .rescoins{font-family:var(--font-d);font-size:22px;color:#7a5600}
 .resline{font-size:12.5px;color:var(--muted)}
 #skillBtn{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 34px);z-index:7;
@@ -372,18 +377,20 @@ const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 300);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x6f7f88, 0.85));
 const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(6, 20, 8); scene.add(sun);
 
-// 부두 바닥 (수로 양옆)
+// 수로 양옆 바닥 · 먼바다 · 수로 물 · 안벽 (색과 범위는 맵 테마가 정함)
+const FOG_FAR = 118, BACK_Z = -112;
+scene.fog.near = 42; scene.fog.far = FOG_FAR;
 const groundMat = new THREE.MeshLambertMaterial({ color: 0x9aa1a6 });
-[-1, 1].forEach(sx => { const gp = new THREE.Mesh(new THREE.PlaneGeometry(200, 400), groundMat); gp.rotation.x = -Math.PI / 2; gp.position.set(sx * (HALF + 0.7 + 100), 0.32, -80); scene.add(gp); });
-// 먼바다 (수평선)
-const sea = new THREE.Mesh(new THREE.PlaneGeometry(600, 300), new THREE.MeshLambertMaterial({ color: 0x2f86b3 })); sea.rotation.x = -Math.PI / 2; sea.position.set(0, -0.2, -300); scene.add(sea);
-// 수로: 물 + 양쪽 안벽
-const road = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.8, 170), new THREE.MeshPhongMaterial({ color: 0x2479a6, shininess: 80, specular: 0x9fd6f0 }));
+const grounds = [-1, 1].map(sx => { const gp = new THREE.Mesh(new THREE.PlaneGeometry(200, 400), groundMat); gp.rotation.x = -Math.PI / 2; gp.position.set(sx * (HALF + 0.7 + 100), 0.32, -80); scene.add(gp); return gp; });
+const seaMat = new THREE.MeshPhongMaterial({ color: 0x2f86b3, shininess: 30, specular: 0x3a6f8f });
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(800, 500), seaMat); sea.rotation.x = -Math.PI / 2; sea.position.set(0, -0.2, -120); scene.add(sea);
+const roadMat = new THREE.MeshPhongMaterial({ color: 0x2479a6, shininess: 80, specular: 0x9fd6f0 });
+const road = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.8, 170), roadMat);
 road.rotation.x = -Math.PI / 2; road.position.set(0, -0.05, -60); scene.add(road);
 const quayMat = new THREE.MeshLambertMaterial({ color: 0x7d868c });
 [-HALF - 0.45, HALF + 0.45].forEach(x => { const c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.75, 170), quayMat); c.position.set(x, -0.05, -60); scene.add(c); });
 const edgeMat = new THREE.MeshLambertMaterial({ color: 0xe8c547 });
-[-HALF - 0.45, HALF + 0.45].forEach(x => { const c = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 170), edgeMat); c.position.set(x, 0.35, -60); scene.add(c); });
+[-HALF - 0.45, HALF + 0.45].forEach(x => { const c = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.2, 170), edgeMat); c.position.set(x, 0.42, -60); scene.add(c); });
 // 물결: 6칸 주기로 반복되는 무늬라 스크롤해도 끊기지 않음
 const dashes = new THREE.Group(); scene.add(dashes);
 const waveMat = new THREE.MeshBasicMaterial({ color: 0xd8f1ff, transparent: true, opacity: 0.5, depthWrite: false });
@@ -392,26 +399,6 @@ for (let z = 24; z > -132; z -= 6) for (const p of waveTile) {
   const d = new THREE.Mesh(new THREE.PlaneGeometry(p.w, 0.09), waveMat); d.rotation.x = -Math.PI / 2; d.position.set(p.x, 0.01, z - p.z); dashes.add(d);
 }
 const dummy = new THREE.Object3D();
-// 길가: 컨테이너 더미 (스크롤)
-const TREE_N = 90, TREE_SPAN = 150;
-const contMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(2.4, 2.4, 5.6), new THREE.MeshLambertMaterial({ color: 0xffffff }), TREE_N);
-const CONT_COLORS = [0xb8412f, 0x2e6fa7, 0xd97a2b, 0x2f8f6a, 0xd9d4c7, 0x6b4f9a].map(c => new THREE.Color(c));
-const trees = [];
-for (let i = 0; i < TREE_N; i++) {
-  const side = i % 2 ? 1 : -1;
-  trees.push({ x: side * (HALF + 3.4 + Math.floor(Math.random() * 5) * 2.6), y: 1.52 + (Math.random() < 0.35 ? 2.4 : 0), z: Math.random() * TREE_SPAN });
-  contMesh.setColorAt(i, CONT_COLORS[i % CONT_COLORS.length]);
-}
-scene.add(contMesh);
-// 멀리 보이는 항만 크레인 (고정)
-const craneMat = new THREE.MeshLambertMaterial({ color: 0xc4473a }), craneMat2 = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
-[[-24, -70], [26, -88], [-30, -105]].forEach(([x, z]) => {
-  const g = new THREE.Group();
-  [[-2, -2], [2, -2], [-2, 2], [2, 2]].forEach(([a, b]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.6, 16, 0.6), craneMat); l.position.set(a, 8, b); g.add(l); });
-  const top = new THREE.Mesh(new THREE.BoxGeometry(5, 2, 5), craneMat2); top.position.y = 16.5; g.add(top);
-  const boom = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 1), craneMat); boom.scale.x = 26; boom.position.set(x < 0 ? 9 : -9, 16, 0); g.add(boom);
-  g.position.set(x, 0, z); scene.add(g);
-});
 
 const WHITE = new THREE.Color(1, 1, 1);
 function withColors(mesh, max) { for (let i = 0; i < max; i++) mesh.setColorAt(i, WHITE); mesh.instanceColor.needsUpdate = true; }
@@ -451,6 +438,270 @@ function merge(parts) {
 const phong = (c, shiny = 14) => new THREE.MeshPhongMaterial({ color: c, flatShading: true, shininess: shiny });
 function inst(geo, mat, max, colored) { const m = new THREE.InstancedMesh(geo, mat, max); if (colored) withColors(m, max); m.count = 0; scene.add(m); return m; }
 const SPH = new THREE.SphereGeometry(0.5, 9, 7), CONE = new THREE.ConeGeometry(0.5, 1, 4), CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 7);
+
+// ---------- 맵 테마: 4레벨마다 한 구역씩 바다에 가까워짐 ----------
+// 0 도심 수로(LV1~4) → 1 북항 부두(LV5~8) → 2 바다 입구(LV9~)
+const THEMES = [
+  { name: '도심 수로', icon: '🏙️', sky: 0x2f8ff0, haze: 0xcfe8f5, road: 0x1b93d8, sea: 0x1a86c8, ground: 0xcdbfa5, quay: 0xcbc5ba, edge: 0xf0c43a,
+    grounds: [{ off: 0, w: 200 }, { off: 0, w: 200 }] },
+  { name: '북항 부두', icon: '⚓', sky: 0x2a86ea, haze: 0xc9e2f2, road: 0x1872c6, sea: 0x14609f, ground: 0x9ea4a8, quay: 0x868e94, edge: 0xf2c230,
+    grounds: [{ off: 0, w: 200 }, { off: 0, w: 7.6 }] },
+  { name: '바다 입구', icon: '🌊', sky: 0x2c95f5, haze: 0xd3edfa, road: 0x1ca0dc, sea: 0x1a93d0, ground: 0xe8cb92, quay: 0xd9aa22, edge: 0xf7cf3f,
+    grounds: [{ off: 4, w: 200 }, null] },
+];
+const themeIdx = lv => Math.min(THEMES.length - 1, Math.floor((lv - 1) / 4));
+const themeGroups = THEMES.map(() => { const g = new THREE.Group(); g.visible = false; scene.add(g); return g; });
+const themeLayers = THEMES.map(() => []);
+const _tc = new THREE.Color(), _tc2 = new THREE.Color();
+const frand = (a, b) => a + Math.random() * (b - a);
+const lam = c => new THREE.MeshLambertMaterial({ color: c });
+// 스크롤되는 소품: 같은 위치 목록을 여러 메시(예: 기둥+잎)가 공유
+function tmesh(ti, geo, mat, items, colorOf) {
+  const m = new THREE.InstancedMesh(geo, mat, items.length); m.frustumCulled = false;
+  if (colorOf) { items.forEach((it, i) => m.setColorAt(i, _tc.setHex(colorOf(it)))); m.instanceColor.needsUpdate = true; }
+  themeGroups[ti].add(m); return m;
+}
+function addLayer(ti, meshes, items, span = 150) { themeLayers[ti].push({ meshes, items, span }); }
+function stat(ti, geo, mat, x, y, z, ry = 0) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.y = ry; themeGroups[ti].add(m); return m; }
+function ribTex(bg, line, step, w = 64, h = 64) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const c = cv.getContext('2d');
+  c.fillStyle = bg; c.fillRect(0, 0, w, h); c.fillStyle = line; for (let x = 2; x < w; x += step) c.fillRect(x, 0, 2, h);
+  return new THREE.CanvasTexture(cv);
+}
+const trunkG = new THREE.CylinderGeometry(0.1, 0.14, 1.5, 6); trunkG.translate(0, 0.75, 0);
+const crownG = merge([[new THREE.IcosahedronGeometry(0.85, 0), Mx(0, 2.0, 0)], [new THREE.IcosahedronGeometry(0.6, 0), Mx(0.35, 2.6, 0.1)]]);
+const trunkM = lam(0x7a5a3a), crownM = phong(0x4f9a45);
+
+{ // 0. 도심 수로: 빌딩 · 가로수 · 가로등(파란 배너) · 난간 · 차도
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 128; const w = cv.getContext('2d');
+  w.fillStyle = '#fff'; w.fillRect(0, 0, 64, 128); w.fillStyle = '#8fb1cc';
+  for (let y = 8; y < 122; y += 14) for (let x = 6; x < 58; x += 14) w.fillRect(x, y, 9, 8);
+  const bMat = new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(cv) }), roofM = lam(0xffffff);
+  const bGeo = new THREE.BoxGeometry(1, 1, 1); bGeo.translate(0, 0.5, 0);
+  const BC = [0xf3efe6, 0xdbe5ee, 0xa4cbea, 0xeac2a4, 0xc8d4dd, 0x8cbbe0, 0xf3dcb4];
+  const bl = []; for (let i = 0; i < 46; i++) { const sd = i % 2 ? 1 : -1, f = Math.random(); bl.push({ x: sd * (HALF + 9.5 + f * 12), y: 0.3, z: Math.random() * 150, sx: frand(3, 5.5), sy: frand(5, 9) + f * 12, sz: frand(4, 7), c: BC[i % BC.length] }); }
+  addLayer(0, [tmesh(0, bGeo, [bMat, bMat, roofM, roofM, bMat, bMat], bl, it => it.c)], bl);
+  const tr = []; for (const sd of [-1, 1]) for (let z = 0; z < 150; z += 7.5) tr.push({ x: sd * (HALF + 2.5), y: 0.32, z: z + (sd > 0 ? 3.7 : 0), ry: Math.random() * 6, s: frand(0.9, 1.2) });
+  addLayer(0, [tmesh(0, trunkG, trunkM, tr), tmesh(0, crownG, crownM, tr)], tr);
+  const poleG = new THREE.CylinderGeometry(0.05, 0.06, 2.8, 6); poleG.translate(0, 1.4, 0);
+  const headG = new THREE.SphereGeometry(0.17, 8, 6); headG.translate(0, 2.85, 0);
+  const flagG = new THREE.BoxGeometry(0.03, 0.9, 0.42); flagG.translate(0, 2.05, 0.24);
+  const lp = []; for (const sd of [-1, 1]) for (let z = 0; z < 150; z += 15) lp.push({ x: sd * (HALF + 1.35), y: 0.32, z: z + (sd > 0 ? 7.5 : 0) });
+  addLayer(0, [tmesh(0, poleG, lam(0x37404a), lp), tmesh(0, headG, new THREE.MeshBasicMaterial({ color: 0xfff4cf }), lp), tmesh(0, flagG, lam(0x2b63d9), lp)], lp);
+  const postG = new THREE.BoxGeometry(0.07, 0.72, 0.07); postG.translate(0, 0.36, 0);
+  const rp = []; for (const sd of [-1, 1]) for (let z = 0; z < 150; z += 1.5) rp.push({ x: sd * (HALF + 0.95), y: 0.32, z });
+  const railM = lam(0x2e3a46);
+  addLayer(0, [tmesh(0, postG, railM, rp)], rp);
+  [-1, 1].forEach(sd => {
+    stat(0, new THREE.BoxGeometry(0.08, 0.08, 400), railM, sd * (HALF + 0.95), 1.06, -80);
+    const rd = stat(0, new THREE.PlaneGeometry(4.5, 400), lam(0x6b737b), sd * (HALF + 5.8), 0.335, -80); rd.rotation.x = -Math.PI / 2;
+  });
+}
+
+{ // 1. 북항 부두: 컨테이너 · 계류 기둥 · 노랑/검정 안벽 · 크레인 · 화물선
+  const cMat = new THREE.MeshLambertMaterial({ map: ribTex('#ffffff', 'rgba(0,0,0,.16)', 6) });
+  const CC = [0xb8412f, 0x2e6fa7, 0xd97a2b, 0x2f8f6a, 0xd9d4c7, 0x6b4f9a];
+  const ct = []; for (let i = 0; i < 80; i++) { const sd = i % 2 ? 1 : -1; ct.push({ x: sd * (HALF + 3.4 + Math.floor(Math.random() * (sd > 0 ? 2 : 5)) * 2.6), y: 1.52 + (Math.random() < 0.35 ? 2.4 : 0), z: Math.random() * 150, c: CC[i % CC.length] }); }
+  addLayer(1, [tmesh(1, new THREE.BoxGeometry(2.4, 2.4, 5.6), cMat, ct, it => it.c)], ct);
+  const bolG = merge([[new THREE.CylinderGeometry(0.2, 0.25, 0.5, 8), Mx(0, 0.25, 0)], [new THREE.CylinderGeometry(0.32, 0.32, 0.1, 8), Mx(0, 0.52, 0)]]);
+  const bo = []; for (const sd of [-1, 1]) for (let z = 0; z < 150; z += 9) bo.push({ x: sd * (HALF + 1.25), y: 0.32, z: z + (sd > 0 ? 4.5 : 0) });
+  addLayer(1, [tmesh(1, bolG, phong(0x23282d), bo)], bo);
+  const hz = []; for (const sd of [-1, 1]) for (let z = 0; z < 150; z += 1.1) hz.push({ x: sd * (HALF + 0.45), y: 0.42, z });
+  addLayer(1, [tmesh(1, new THREE.BoxGeometry(0.58, 0.23, 0.55), lam(0x1c1f22), hz)], hz);
+  // 오른쪽 부두 끝 안벽 (그 너머는 바다, 화물선 정박)
+  const qx = HALF + 0.7 + 7.6;
+  stat(1, new THREE.BoxGeometry(0.6, 0.8, 400), quayMat, qx, -0.08, -80);
+  stat(1, new THREE.BoxGeometry(0.62, 0.14, 400), edgeMat, qx, 0.38, -80);
+  // 크레인 (고정)
+  const craneMat = lam(0xc4473a), craneMat2 = lam(0xeeeeee);
+  [[-24, -70], [11.5, -92], [-30, -100]].forEach(([x, z]) => {
+    const g = new THREE.Group();
+    [[-2, -2], [2, -2], [-2, 2], [2, 2]].forEach(([a, b]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.6, 16, 0.6), craneMat); l.position.set(a, 8, b); g.add(l); });
+    const top = new THREE.Mesh(new THREE.BoxGeometry(5, 2, 5), craneMat2); top.position.y = 16.5; g.add(top);
+    const boom = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 1), craneMat); boom.scale.x = 26; boom.position.set(x < 0 ? 9 : -9, 16, 0); g.add(boom);
+    g.position.set(x, 0, z); themeGroups[1].add(g);
+  });
+  // 화물선 (고정)
+  const ship = new THREE.Group(); ship.position.set(qx + 6.2, 0, -50); themeGroups[1].add(ship);
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); ship.add(m); return m; };
+  add(new THREE.BoxGeometry(8.5, 4.6, 40), lam(0x1e2c48), 0, 2.0, 0);
+  add(new THREE.BoxGeometry(8.56, 1.2, 40.06), lam(0xb3322b), 0, -0.1, 0);
+  add(new THREE.BoxGeometry(7, 6, 5), lam(0xf2f2ee), 0, 7.3, 16.5);
+  add(new THREE.BoxGeometry(7.05, 0.7, 5.05), lam(0x1c2a3a), 0, 9.2, 16.5);
+  for (let r = 0; r < 6; r++) for (let c = -1; c <= 1; c++) {
+    const h = 1 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < h; k++) add(new THREE.BoxGeometry(2.3, 2.2, 5.4), new THREE.MeshLambertMaterial({ color: CC[(r * 3 + c + 1 + k) % CC.length], map: cMat.map }), c * 2.45, 5.4 + k * 2.2, -15 + r * 5.6);
+  }
+}
+
+{ // 2. 바다 입구: 왼쪽 해변(파라솔) · 오른쪽 방파제(테트라포드) · 등대 · 요트 · 부표
+  const dirs = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]].map(d => new THREE.Vector3(...d).normalize());
+  const up = new THREE.Vector3(0, 1, 0);
+  const tetG = merge(dirs.map(d => [new THREE.CylinderGeometry(0.16, 0.34, 1.0, 6),
+    new THREE.Matrix4().compose(d.clone().multiplyScalar(0.42), new THREE.Quaternion().setFromUnitVectors(up, d), new THREE.Vector3(1, 1, 1))]));
+  const te = []; for (let i = 0; i < 95; i++) { const f = Math.pow(Math.random(), 0.7); te.push({ x: HALF + 2.0 + f * 8, y: -0.1 + (1 - f) * 0.9 + Math.random() * 0.6, z: Math.random() * 150, rx: frand(0, 6), ry: frand(0, 6), rz: frand(0, 6), s: frand(0.95, 1.4) }); }
+  addLayer(2, [tmesh(2, tetG, phong(0xd2cbbd), te)], te);
+  const rk = []; for (let i = 0; i < 40; i++) rk.push({ x: HALF + 1.8 + Math.random() * 9, y: -0.35, z: Math.random() * 150, ry: frand(0, 6), s: frand(0.8, 1.7) });
+  addLayer(2, [tmesh(2, new THREE.DodecahedronGeometry(0.9, 0), phong(0x8d8a84), rk)], rk);
+  // 해변 가장자리: 젖은 모래 + 파도 거품
+  const bx0 = -(HALF + 0.7 + 4);
+  stat(2, new THREE.BoxGeometry(1.8, 0.5, 400), lam(0xc9a86e), bx0, 0.04, -80);
+  const foam = stat(2, new THREE.PlaneGeometry(1.6, 400), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false }), bx0 + 1.4, -0.12, -80); foam.rotation.x = -Math.PI / 2;
+  // 파라솔 + 수건
+  const UC = [0xff5a5a, 0xffd24a, 0x4aa8ff, 0x55c27a, 0xff8ad1, 0xffffff];
+  const poleG = new THREE.CylinderGeometry(0.04, 0.04, 2.1, 5); poleG.translate(0, 1.05, 0);
+  const canG = new THREE.ConeGeometry(1.15, 0.55, 10); canG.translate(0, 2.2, 0);
+  const towG = new THREE.BoxGeometry(0.9, 0.03, 1.8); towG.translate(0.95, 0.02, 0.2);
+  const um = []; for (let i = 0; i < 24; i++) um.push({ x: -(HALF + 7 + Math.random() * 10), y: 0.32, z: Math.random() * 150, ry: frand(0, 6), c: UC[i % UC.length] });
+  addLayer(2, [tmesh(2, poleG, lam(0xf4f4f4), um), tmesh(2, canG, lam(0xffffff), um, it => it.c), tmesh(2, towG, lam(0xffffff), um, it => UC[(UC.indexOf(it.c) + 2) % UC.length])], um);
+  const bt = []; for (let i = 0; i < 18; i++) bt.push({ x: -(HALF + 19 + Math.random() * 6), y: 0.32, z: Math.random() * 150, ry: frand(0, 6), s: frand(1.2, 1.7) });
+  addLayer(2, [tmesh(2, trunkG, trunkM, bt), tmesh(2, crownG, crownM, bt)], bt);
+  // 부표 (해변과 수로 사이 바다)
+  const buoyG = new THREE.CylinderGeometry(0.22, 0.3, 0.6, 8); buoyG.translate(0, 0.1, 0);
+  const capG = new THREE.ConeGeometry(0.2, 0.35, 8); capG.translate(0, 0.58, 0);
+  const by = []; for (let z = 0; z < 150; z += 18.75) by.push({ x: -(HALF + 1.9 + Math.random() * 1.6), y: -0.2, z });
+  addLayer(2, [tmesh(2, buoyG, lam(0xe0362c), by), tmesh(2, capG, lam(0xffffff), by)], by);
+  // 등대 (방파제 끝, 고정)
+  const lh = new THREE.Group(); lh.position.set(15.5, 0, -64); themeGroups[2].add(lh);
+  const L = (geo, mat, y) => { const m = new THREE.Mesh(geo, mat); m.position.y = y; lh.add(m); return m; };
+  L(new THREE.BoxGeometry(7, 1.2, 12), phong(0xb4aea3), 0.2);
+  L(new THREE.CylinderGeometry(0.95, 1.45, 10, 14), phong(0xf7f7f4, 30), 5.8);
+  L(new THREE.CylinderGeometry(1.5, 1.5, 0.25, 14), lam(0x4a5058), 10.9);
+  L(new THREE.CylinderGeometry(0.9, 0.9, 1.4, 10), phong(0xd7332c, 30), 11.75);
+  L(new THREE.ConeGeometry(1.1, 1.0, 10), phong(0xd7332c, 30), 12.95);
+  L(new THREE.SphereGeometry(0.4, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2b0 }), 11.75);
+  // 요트 (고정)
+  const yt = new THREE.Group(); yt.position.set(-8.5, 0, -70); yt.rotation.y = 0.3; themeGroups[2].add(yt);
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.5, 3.4), lam(0xffffff)); hull.position.y = 0.1; yt.add(hull);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.4, 5), lam(0xdddddd)); mast.position.y = 2.5; yt.add(mast);
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute([0, 0.5, 1.3, 0, 4.6, 0.05, 0, 0.5, -0.1], 3)); sg.computeVertexNormals();
+  yt.add(new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide })));
+}
+
+// ---------- 먼 배경 그림 (수평선 너머: 산 · 도시 · 부산타워 · 다리 · 섬) ----------
+const BACK_W = 300, BACK_H = 46;
+const backCv = document.createElement('canvas'); backCv.width = 3072; backCv.height = 472;
+const bctx = backCv.getContext('2d'), BS = backCv.width / BACK_W;
+const backTex = new THREE.CanvasTexture(backCv); backTex.minFilter = THREE.LinearFilter; backTex.generateMipmaps = false;
+const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(BACK_W, BACK_H), new THREE.MeshBasicMaterial({ map: backTex, fog: false }));
+backdrop.position.set(0, BACK_H / 2 - 0.3, BACK_Z); scene.add(backdrop);
+const bx = u => (u + BACK_W / 2) * BS, by = v => backCv.height - (v + 0.3) * BS;
+const mixc = (a, b, t) => '#' + _tc.setHex(a).lerp(_tc2.setHex(b), t).getHexString();
+function srand(seed) { let v = seed; return () => (v = (v * 16807) % 2147483647) / 2147483647; }
+function bSky(t, clouds) {
+  const c = bctx, g = c.createLinearGradient(0, 0, 0, backCv.height);
+  g.addColorStop(0, mixc(t.sky, 0, 0)); g.addColorStop(0.55, mixc(t.sky, t.haze, 0.55)); g.addColorStop(1, mixc(t.haze, 0, 0));
+  c.fillStyle = g; c.fillRect(0, 0, backCv.width, backCv.height);
+  for (const [u, v, r] of clouds) {
+    c.fillStyle = 'rgba(255,255,255,.9)';
+    [[0, 0, 1], [-0.95, -0.25, 0.7], [0.95, -0.3, 0.75], [0.45, 0.35, 0.62], [-0.45, 0.3, 0.58]].forEach(([a, b, k]) => {
+      c.beginPath(); c.ellipse(bx(u + a * r), by(v + b * r * 0.6), k * r * BS, k * r * BS * 0.55, 0, 0, 7); c.fill(); });
+  }
+}
+function bMount(bumps, base, color, from = -150, to = 150) {
+  const c = bctx, f = u => base + bumps.reduce((a, [p, h, w]) => a + h * Math.exp(-(((u - p) / w) ** 2)), 0) + 0.35 * Math.sin(u * 0.9) + 0.25 * Math.sin(u * 2.3);
+  c.fillStyle = color; c.beginPath(); c.moveTo(bx(from), by(-1));
+  for (let u = from; u <= to; u += 0.5) c.lineTo(bx(u), by(f(u)));
+  c.lineTo(bx(to), by(-1)); c.closePath(); c.fill();
+}
+function bCity(from, to, base, hMin, hMax, cols, haze, ht, seed, wMin = 1.6, wMax = 4.5) {
+  const c = bctx, r = srand(seed); let u = from;
+  while (u < to) {
+    const w = wMin + r() * (wMax - wMin), h = hMin + r() * (hMax - hMin), col = cols[Math.floor(r() * cols.length)];
+    c.fillStyle = mixc(col, haze, ht); c.fillRect(bx(u), by(base + h), w * BS, (h + 1) * BS);
+    c.fillStyle = 'rgba(20,40,70,.08)'; c.fillRect(bx(u + w * 0.68), by(base + h), w * 0.32 * BS, (h + 1) * BS);
+    c.fillStyle = `rgba(70,100,140,${(0.3 * (1 - ht)).toFixed(2)})`;
+    for (let y = base + 0.8; y < base + h - 0.7; y += 1.15) c.fillRect(bx(u + 0.3), by(y + 0.45), (w - 0.6) * BS * 0.75, 0.38 * BS);
+    u += w + r() * 0.7;
+  }
+}
+function bTower(u, base, h, col, hz) {   // 부산타워
+  const c = bctx; c.fillStyle = mixc(col, hz, 0.12);
+  c.fillRect(bx(u - 0.45), by(base + h), 0.9 * BS, h * BS);
+  c.beginPath(); c.ellipse(bx(u), by(base + h * 0.86), 1.9 * BS, 0.9 * BS, 0, 0, 7); c.fill();
+  c.fillStyle = mixc(0x9fb7cc, hz, 0.12); c.fillRect(bx(u - 1.7), by(base + h * 0.86 + 0.15), 3.4 * BS, 0.35 * BS);
+  c.fillStyle = mixc(col, hz, 0.12); c.fillRect(bx(u - 0.12), by(base + h + 3.2), 0.24 * BS, 3.2 * BS);
+}
+function bWater(t, top) {
+  const c = bctx, g = c.createLinearGradient(0, by(top), 0, backCv.height);
+  g.addColorStop(0, mixc(t.sea, t.haze, 0.72)); g.addColorStop(0.5, mixc(t.sea, t.haze, 0.6)); g.addColorStop(1, mixc(t.haze, 0, 0));
+  c.fillStyle = g; c.fillRect(0, by(top), backCv.width, backCv.height - by(top));
+  const r = srand(5); c.fillStyle = 'rgba(255,255,255,.45)';
+  for (let i = 0; i < 160; i++) { const v = r() * top; c.fillRect(bx(r() * 300 - 150), by(v), (0.6 + r() * 2) * BS, 0.12 * BS); }
+}
+function bCrane(u, h, col, dir) {
+  const c = bctx; c.strokeStyle = col; c.lineWidth = 0.45 * BS;
+  c.beginPath(); c.moveTo(bx(u - 1.6), by(0)); c.lineTo(bx(u - 1.6), by(h)); c.moveTo(bx(u + 1.6), by(0)); c.lineTo(bx(u + 1.6), by(h));
+  c.moveTo(bx(u - 1.6), by(h * 0.55)); c.lineTo(bx(u + 1.6), by(h * 0.55)); c.moveTo(bx(u - 2.5 * dir), by(h)); c.lineTo(bx(u + 11 * dir), by(h)); c.stroke();
+  c.lineWidth = 0.15 * BS; c.beginPath(); c.moveTo(bx(u), by(h + 3)); c.lineTo(bx(u + 10 * dir), by(h)); c.moveTo(bx(u), by(h + 3)); c.lineTo(bx(u - 2.5 * dir), by(h)); c.stroke();
+}
+const PAINT = [
+  t => { // 도심: 산 · 부산타워 · 빽빽한 빌딩 · 보행교
+    bSky(t, [[-40, 34, 4], [24, 38, 5], [62, 31, 3.6], [-92, 36, 5], [110, 35, 4]]);
+    bMount([[-62, 14, 24], [10, 19, 15], [46, 13, 20], [100, 15, 30], [-120, 10, 25]], 6, mixc(0x3f8a4e, t.haze, 0.55));
+    bMount([[-30, 8, 13], [14, 10, 9], [70, 7, 16]], 3, mixc(0x2f7a3f, t.haze, 0.4));
+    bTower(14, 12, 22, 0xf4f4f0, t.haze);
+    bCity(-150, 150, 1, 3, 13, [0xf4f1ea, 0xdbe6ef, 0xa6cbe8, 0xe8c3a6, 0xcfd8e0], t.haze, 0.38, 7);
+    bCity(-150, 150, 1, 1.5, 6, [0xffffff, 0xe7eef4, 0xbcd6ec, 0xf1d2b5], t.haze, 0.2, 11, 2, 5);
+    bWater(t, 1.3);
+    const c = bctx; c.fillStyle = mixc(0xe9eef2, t.haze, 0.15);   // 수로를 가로지르는 보행교
+    c.fillRect(bx(-22), by(4.4), 44 * BS, 0.9 * BS); c.fillRect(bx(-22), by(5.5), 44 * BS, 0.2 * BS);
+    for (let u = -21; u <= 21; u += 1.2) c.fillRect(bx(u), by(5.5), 0.12 * BS, 1.1 * BS);
+    [-12, 0, 12].forEach(u => c.fillRect(bx(u - 0.4), by(3.5), 0.8 * BS, 3.8 * BS));
+  },
+  t => { // 부두: 산 · 부산타워 · 도시 · 사장교 · 크레인
+    bSky(t, [[-55, 35, 5], [8, 39, 4], [48, 34, 5.5], [-110, 37, 4], [100, 38, 5]]);
+    bMount([[-80, 15, 30], [-12, 11, 20], [32, 21, 14], [92, 14, 30]], 5, mixc(0x3f8a4e, t.haze, 0.6));
+    bTower(26, 14, 21, 0xf4f4f0, t.haze);
+    bCity(-150, 150, 0.8, 2, 10, [0xf1eee7, 0xd6e2ec, 0xa9c9e4, 0xdcc7b4], t.haze, 0.45, 3);
+    bWater(t, 1.0);
+    const c = bctx, col = mixc(0xf0f2f4, t.haze, 0.25);
+    c.fillStyle = col; c.fillRect(bx(-95), by(6.2), 175 * BS, 0.7 * BS);
+    [-34, 16].forEach(u => {
+      c.fillRect(bx(u - 2.4), by(24), 0.7 * BS, 24 * BS); c.fillRect(bx(u + 1.7), by(24), 0.7 * BS, 24 * BS); c.fillRect(bx(u - 2.4), by(18), 4.8 * BS, 0.6 * BS);
+      c.strokeStyle = col; c.lineWidth = 0.1 * BS; c.beginPath();
+      for (let k = 1; k <= 9; k++) { c.moveTo(bx(u), by(23)); c.lineTo(bx(u - k * 2.6), by(6.9)); c.moveTo(bx(u), by(23)); c.lineTo(bx(u + k * 2.6), by(6.9)); }
+      c.stroke();
+    });
+    const cr = mixc(0xc8402f, t.haze, 0.35);
+    bCrane(-62, 17, cr, 1); bCrane(-49, 16, cr, 1); bCrane(54, 17, cr, -1); bCrane(68, 16, cr, -1);
+  },
+  t => { // 바다 입구: 탁 트인 수평선 · 섬 · 먼 해안 도시 · 배
+    bSky(t, [[-60, 36, 6], [-10, 40, 4.5], [30, 35, 6.5], [80, 39, 5], [-115, 34, 5]]);
+    const hz = 8.6;
+    bWater(t, hz);
+    bMount([[-112, 9, 22], [-70, 6, 14]], hz - 1, mixc(0x3f8a4e, t.haze, 0.62), -150, -34);
+    bCity(-150, -40, hz - 0.3, 0.8, 5, [0xf4f1ea, 0xdbe6ef, 0xb5d2ea], t.haze, 0.5, 9, 1.2, 3);
+    bMount([[22, 7.5, 8], [32, 5, 6], [12, 3, 4]], hz - 1.5, mixc(0x3e8f52, t.haze, 0.42), 2, 46);
+    const c = bctx;
+    [[-14, 0.9], [58, 0.7], [-48, 0.6]].forEach(([u, k]) => {
+      c.fillStyle = mixc(0x34465e, t.haze, 0.45); c.fillRect(bx(u - 2.5 * k), by(hz + 0.6 * k), 5 * k * BS, 0.7 * k * BS);
+      c.fillStyle = mixc(0xffffff, t.haze, 0.3); c.fillRect(bx(u + 0.6 * k), by(hz + 1.5 * k), 1.4 * k * BS, 0.9 * k * BS);
+    });
+  },
+];
+let curTheme = -1;
+const skyCol = new THREE.Color(0xa6d8ea);
+function applyTheme(i) {
+  if (i === curTheme) return; curTheme = i; const t = THEMES[i];
+  themeGroups.forEach((g, k) => { g.visible = k === i; });
+  skyCol.setHex(t.sky); scene.fog.color.setHex(t.haze);
+  groundMat.color.setHex(t.ground); roadMat.color.setHex(t.road); seaMat.color.setHex(t.sea); quayMat.color.setHex(t.quay); edgeMat.color.setHex(t.edge);
+  t.grounds.forEach((gd, k) => { const gp = grounds[k]; gp.visible = !!gd; if (gd) { gp.scale.x = gd.w / 200; gp.position.x = (k ? 1 : -1) * (HALF + 0.7 + gd.off + gd.w / 2); } });
+  PAINT[i](t); backTex.needsUpdate = true;
+}
+function drawTheme() {
+  for (const L of themeLayers[curTheme] || []) {
+    L.items.forEach((it, i) => {
+      dummy.rotation.set(it.rx || 0, it.ry || 0, it.rz || 0);
+      dummy.scale.set(it.sx ?? it.s ?? 1, it.sy ?? it.s ?? 1, it.sz ?? it.s ?? 1);
+      dummy.position.set(it.x, it.y || 0, -L.span + 24 + ((it.z + scroll) % L.span)); dummy.updateMatrix();
+      for (const m of L.meshes) m.setMatrixAt(i, dummy.matrix);
+    });
+    for (const m of L.meshes) m.instanceMatrix.needsUpdate = true;
+  }
+}
+applyTheme(0);
 
 // 부캉이 (상어): 앞(-z)을 보고 헤엄침
 const sharkParts = [
@@ -765,7 +1016,7 @@ function clearLevel() {
 }
 
 function buildLevel() {
-  clearLevel();
+  clearLevel(); applyTheme(themeIdx(level));
   levelGroup = new THREE.Group(); scene.add(levelGroup);
   gates = []; zombies = []; bullets = []; ebullets = []; events = []; bosses = []; waves = [];
   pl = { n: 20 + level * 4, tier: 0, rate: 1, pow: 1 };
@@ -1857,11 +2108,7 @@ function draw(t) {
   cx = Math.max(-lim + Math.min(r, lim * 0.85), Math.min(lim - Math.min(r, lim * 0.85), cx));
 
   dashes.position.z = scroll % 6;
-  trees.forEach((tr, i) => {
-    dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
-    dummy.position.set(tr.x, tr.y, -TREE_SPAN + 24 + ((tr.z + scroll) % TREE_SPAN)); dummy.updateMatrix(); contMesh.setMatrixAt(i, dummy.matrix);
-  });
-  contMesh.instanceMatrix.needsUpdate = true;
+  drawTheme();
 
   const vis = state === 'menu' ? 0 : Math.min(pl.n, MAX_ARMY);
   const kick = pl.tier === 2 ? 0.12 : pl.tier === 1 ? 0.04 : 0.06;
@@ -1950,11 +2197,12 @@ function draw(t) {
   const portrait = innerHeight > innerWidth;
   const sx = shake > 0 ? (Math.random() - 0.5) * shake : 0;
   shake = Math.max(0, shake - 0.016);
-  camera.position.set(cx * 0.4 + sx, portrait ? 12.5 : 9, portrait ? 13 : 10);
-  camera.lookAt(cx * 0.25, 0, -14);
+  camera.position.set(cx * 0.4 + sx, portrait ? 11 : 8.5, portrait ? 13.5 : 10.5);
+  camera.lookAt(cx * 0.25, 0, portrait ? -18 : -16);
   camera.updateMatrixWorld();
   hitFlash = Math.max(0, hitFlash - 0.016);
-  scene.background.setRGB(0.65 + hitFlash, 0.85 - hitFlash, 0.92 - hitFlash);
+  scene.background.setRGB(skyCol.r + hitFlash, skyCol.g - hitFlash, skyCol.b - hitFlash);
+  backdrop.material.color.setRGB(1, 1 - hitFlash * 1.6, 1 - hitFlash * 1.6);
 
   if (state === 'menu') armyTag.hidden = true;
   else { armyTag.textContent = pl.n; place(armyTag, cx, 1.7, 0.6); }
@@ -2000,6 +2248,7 @@ function start() {
   ['menu', 'hub', 'result'].forEach(id => { document.getElementById(id).hidden = true; });
   document.querySelector('.hud').hidden = false;
   buildLevel(); resetSkills(); state = 'run';
+  if ((level - 1) % 4 === 0 && level <= THEMES.length * 4) { const t = THEMES[themeIdx(level)]; banner(`${t.icon} ${t.name}`, 'zone'); }
 }
 
 // ---------- 기지 (레벨 / 스킬) ----------
@@ -2030,6 +2279,7 @@ function renderHub() {
   const open = save.maxClear + 1;
   let h = '';
   for (let n = 1; n <= open + 3; n++) {
+    if ((n - 1) % 4 === 0 && n <= THEMES.length * 4) { const zi = themeIdx(n), t = THEMES[zi]; h += `<div class="zonehd"><span>${t.icon}</span>${t.name}<small>LV ${n}${zi === THEMES.length - 1 ? '~' : '–' + (n + 3)}</small></div>`; }
     if (n <= save.maxClear) h += `<button class="done" data-lv="${n}">LV ${n}<span class="ic">${IC_CHECK}</span><small>클리어</small></button>`;
     else if (n === open) h += `<button class="next" data-lv="${n}">LV ${n}<span class="ic">${IC_PLAY}</span><small>도전!</small></button>`;
     else h += `<button disabled>LV ${n}<span class="ic">${IC_LOCK}</span><small>잠김</small></button>`;
