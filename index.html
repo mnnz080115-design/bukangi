@@ -133,10 +133,6 @@ details.howto[open]{display:grid;gap:10px}
 .skbtns button.gold{background:#e0a400;box-shadow:0 4px 0 #9a7000}
 .skbtns button:disabled{background:#d7d1c2;color:#8a8475;box-shadow:0 4px 0 #b9b2a2;cursor:default}
 .banner.zone{background:linear-gradient(180deg,#3f8fff,#1a58d6);box-shadow:0 4px 0 #0f43a8}
-.zonehd{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-family:var(--font-ui);font-weight:900;font-size:16px;color:var(--navy);margin-top:4px}
-.zonehd:first-child{margin-top:0}
-.zonehd small{font-size:12.5px;color:var(--muted);font-weight:700}
-.zonehd::after{content:"";flex:1;height:2px;background:#e6e0d2;border-radius:2px}
 .rescoins{font-family:var(--font-d);font-size:22px;color:#7a5600}
 .resline{font-size:12.5px;color:var(--muted)}
 #skillBtn{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 34px);z-index:7;
@@ -2279,7 +2275,6 @@ function renderHub() {
   const open = save.maxClear + 1;
   let h = '';
   for (let n = 1; n <= open + 3; n++) {
-    if ((n - 1) % 4 === 0 && n <= THEMES.length * 4) { const zi = themeIdx(n), t = THEMES[zi]; h += `<div class="zonehd"><span>${t.icon}</span>${t.name}<small>LV ${n}${zi === THEMES.length - 1 ? '~' : '–' + (n + 3)}</small></div>`; }
     if (n <= save.maxClear) h += `<button class="done" data-lv="${n}">LV ${n}<span class="ic">${IC_CHECK}</span><small>클리어</small></button>`;
     else if (n === open) h += `<button class="next" data-lv="${n}">LV ${n}<span class="ic">${IC_PLAY}</span><small>도전!</small></button>`;
     else h += `<button disabled>LV ${n}<span class="ic">${IC_LOCK}</span><small>잠김</small></button>`;
