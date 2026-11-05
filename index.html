@@ -254,6 +254,8 @@ button.ghost:active{box-shadow:0 2px 0 #b5c4d6}
 .nrow.next::before{content:"";position:absolute;left:50%;top:-9px;width:96px;height:96px;translate:-50% 0;border-radius:50%;
   background:conic-gradient(var(--zc) 0 100%);-webkit-mask:radial-gradient(circle,transparent 42px,#000 43px);mask:radial-gradient(circle,transparent 42px,#000 43px);opacity:.35;animation:ring 1.6s ease-in-out infinite}
 .nrow.next .node{width:82px;height:74px}
+.nrow.next::before{pointer-events:none}
+.node{position:relative;z-index:1}
 .bub{position:absolute;bottom:calc(100% + 18px);left:50%;translate:-50% 0;white-space:nowrap;padding:9px 16px;border-radius:14px;background:#fff;color:var(--zt);
   font-family:var(--font-ui);font-weight:900;font-size:17px;border:2px solid #e3dccc;box-shadow:0 3px 0 #e3dccc;animation:bob 1.3s ease-in-out infinite;pointer-events:none}
 .bub::after{content:"";position:absolute;left:50%;top:100%;width:12px;height:12px;translate:-50% -5px;rotate:45deg;background:#fff;border-right:2px solid #e3dccc;border-bottom:2px solid #e3dccc}
