@@ -615,14 +615,14 @@ const postMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
 
 let gunScale = { sx: 1, sy: 1, sz: 0.6 };
 // 레벨이 오를수록 우리 부대가 강해짐
-const lvAtk = () => 1;   // 레벨 자체 공격 보너스 없음 (강화 탭의 공격력으로만 강해짐)
-const lvDef = () => 1;   // 레벨 자체 방어 보너스 없음 (강화 탭의 방어력으로만)
+const lvAtk = () => 1.2;   // 부캉이 기본 공격 보너스 +20% (레벨과 무관, 적 체력 계산에 안 들어감)
+const lvDef = () => 0.85;  // 부캉이 기본 받는 피해 −15% (레벨과 무관)
 function updateHud() {
   const w = WEAPONS[pl.tier];
   document.getElementById('wp').innerHTML =
     `<b>${w.name}</b><span class="pips">${WEAPONS.map((_, i) => `<span class="${i <= pl.tier ? 'on' : ''}"></span>`).join('')}</span>` +
     `<span>연사 ${Math.round(pl.rate * 100)}%</span><span>파워 ${Math.round(pl.pow * 100)}%</span>` +
-    ((stLv('atk') || stLv('def')) ? `<span style="color:var(--army)">공격 +${Math.round((lvAtk() * statAtk() - 1) * 100)}% · 받는 피해 −${Math.round((1 - lvDef() * statDef()) * 100)}%</span>` : '');
+    (true ? `<span style="color:var(--army)">공격 +${Math.round((lvAtk() * statAtk() - 1) * 100)}% · 받는 피해 −${Math.round((1 - lvDef() * statDef()) * 100)}%</span>` : '');
   const [sx, sy, sz] = w.gun; gunMat.color.set(pl.tier === 2 ? 0x4b5a3a : 0x222831);
   gunScale = { sx, sy, sz };
 }
@@ -1056,16 +1056,16 @@ let save = { coins: 0, maxClear: 0, skills: { water: 1 }, equip: 'water', stats:
 try { const raw = localStorage.getItem(SAVE_KEY); if (raw) save = Object.assign(save, JSON.parse(raw)); } catch (e) {}
 // ---------- 부캉이 기본 강화 (코인으로 영구 강화, 적 체력 계산에는 안 들어감) ----------
 const STATS = [
-  { id: 'atk',   icon: '🦷', name: '공격력',   max: 20, cost: l => Math.round(50 * Math.pow(1.25, l)),  eff: l => `피해 +${l * 4}%` },
-  { id: 'def',   icon: '🛡️', name: '방어력',   max: 15, cost: l => Math.round(60 * Math.pow(1.28, l)),  eff: l => `받는 피해 −${l * 2}%` },
+  { id: 'atk',   icon: '🦷', name: '공격력',   max: 20, cost: l => Math.round(50 * Math.pow(1.25, l)),  eff: l => `피해 +${l * 5}%` },
+  { id: 'def',   icon: '🛡️', name: '방어력',   max: 15, cost: l => Math.round(60 * Math.pow(1.28, l)),  eff: l => `받는 피해 −${(l * 2.5).toFixed(1).replace('.0', '')}%` },
   { id: 'regen', icon: '💧', name: '재생',     max: 6,  cost: l => Math.round(120 * Math.pow(1.6, l)),  eff: l => l ? `3초마다 병력 +${(l * 0.3).toFixed(1)}%` : '없음' },
   { id: 'coin',  icon: '🪙', name: '코인 보너스', max: 10, cost: l => Math.round(80 * Math.pow(1.4, l)), eff: l => `코인 +${l * 10}%` },
 ];
 const stLv = id => (save.stats && save.stats[id]) || 0;
 // '시작 총기' 강화는 삭제됨: 이미 산 경우 코인 돌려줌
 if (save.stats && save.stats.gun) { save.coins += [0, 300, 1500][save.stats.gun] || 0; delete save.stats.gun; try { localStorage.setItem('bukangi-save-v1', JSON.stringify(save)); } catch (e) {} }
-const statAtk = () => 1 + 0.04 * stLv('atk');
-const statDef = () => 1 - 0.02 * stLv('def');
+const statAtk = () => 1 + 0.05 * stLv('atk');
+const statDef = () => 1 - 0.025 * stLv('def');
 let regenAcc = 0, regenFrac = 0;
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) {} }
 
