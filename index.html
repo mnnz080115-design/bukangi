@@ -1171,7 +1171,7 @@ function spawnBoss(ev) {
   const hp = Math.max(30, Math.round(P * FOE_HP * lvFoeHp() * lvBossHp() * (final ? 9 : ev.solo ? 5.5 : 4.5)));
   const base = mat.color.clone();
   bosses.push({ x: 0, z: SPAWN_Z, hp, max: hp, incoming: 0, atk: 0, attached: false, mesh: g, arms, walk: model.walk, reach: model.reach * (final ? 1.5 : 1.05), flashCol: model.flashCol, mat, eyeM, base, flash: 0, dead: 0,
-    final, wolf: !final, armor: final ? 0.1 : 0, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
+    final, wolf: !final, armor: final ? 0.05 : 0, sc, speed: BOSS_SPEED * (final ? 1 : 1.3) * lvFoeSpd(), phase2: false, throwCd: 2, summonCd: 0, bombCd: 2.5, howlCd: 2.5, howl: 0, pivot, rollCd: 4, roll: null, phase3: false, el: tag('boss') });
   const wi = bosses.filter(o => o.wolf).length;
   if (final) banner('푸바오 등장! 생닭 주의');
   else if (wolfCount() > 1) popText(`늑구 ${wi}/${wolfCount()}`, 0, 5, -30, '#ffd0c9');
@@ -1179,11 +1179,11 @@ function spawnBoss(ev) {
 
 // 푸바오 소환수
 //  루이바오·후이바오(푸바오 동생): 둘이 한 번에 나옴. 멀찍이 멈춰 서서 생닭을 던짐. 체력은 각각 푸바오의 50%, 방어력 없음
-//  아이바오(푸바오 엄마): 푸바오가 분노할 때 한 번 등장. 체력 푸바오의 130%, 방어력 30%. 한 줄을 굴러오며 깔린 부캉이는 100% 사망
+//  아이바오(푸바오 엄마): 푸바오가 분노할 때 한 번 등장. 체력 푸바오의 130%, 방어력 15%. 한 줄을 굴러오며 깔린 부캉이는 100% 사망
 const SUMMON = {
   rui: { name: '루이바오', hp: 0.5, armor: 0, scale: 0.8, tint: 0xffe3ec },
   hui: { name: '후이바오', hp: 0.5, armor: 0, scale: 0.8, tint: 0xe3eeff },
-  ai:  { name: '아이바오', hp: 1.3, armor: 0.3, scale: 1.35, tint: null },
+  ai:  { name: '아이바오', hp: 1.3, armor: 0.15, scale: 1.35, tint: null },
 };
 function spawnSummon(p, kind, x) {
   const S = SUMMON[kind], model = buildPanda(), { g: body, mat, eyeM, arms } = model;
@@ -1905,7 +1905,7 @@ function update(dt) {
       spawnSummon(b, 'ai', b.x);
     }
     if (b.final && !b.phase3 && b.hp < b.max * 0.25) {
-      b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2; b.armor = 0.2;   // 각성: 방어력 상승
+      b.phase3 = true; b.rollCd = Math.min(b.rollCd, 1.2); b.speed *= 1.2; b.armor = 0.1;   // 각성: 방어력 상승
       b.eyeM.color.set(0xffee55); b.base.set(0xffd9a8); b.el.classList.add('awake');
       boom(b.x, b.z, 7, 0xffd54a, 3, 0.6); shake = Math.max(shake, 0.5);
       banner('푸바오 각성!');
